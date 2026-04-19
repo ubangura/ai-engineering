@@ -9,6 +9,9 @@ dependencies = [
     "dotenv>=0.9.9",
 ]
 
+[tool.setuptools]
+py-modules = ["api_config"]
+
 [dependency-groups]
 dev = [
     "ipykernel>=7.2.0",
