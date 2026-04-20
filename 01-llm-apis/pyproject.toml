@@ -1,16 +1,16 @@
 [project]
-name = "claude-api"
+name = "01-llm-apis"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "anthropic>=0.96.0",
-    "dotenv>=0.9.9",
+    "shared",
 ]
 
-[tool.setuptools]
-py-modules = ["api_config"]
+[tool.uv.sources]
+shared = { workspace = true }
 
 [dependency-groups]
 dev = [

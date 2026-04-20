@@ -1,0 +1,15 @@
+[project]
+name = "shared"
+version = "0.1.0"
+description = "Shared Anthropic API configuration"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.96.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.setuptools]
+py-modules = ["api_config"]
+
+[tool.uv.workspace]
+members = ["01-llm-apis", "python-for-ai"]
