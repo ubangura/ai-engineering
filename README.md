@@ -6,7 +6,7 @@ Hands-on experiments from AI engineering self-study.
 
 | Folder            | Domain                                                          |
 | ----------------- | --------------------------------------------------------------- |
-| `python-for-ai/`  | Python fundamentals for AI (pandas, matplotlib, APIs)           |
+| `python-for-ai/`  | Python fundamentals for AI (pandas, matplotlib, APIs, Pydantic) |
 | `01-llm-apis/`    | Messages API, structured outputs, prompt engineering, streaming |
 | `02-embeddings/`  | Voyage AI, sentence-transformers, semantic search               |
 | `03-rag/`         | Chunking, vector DBs, hybrid search, advanced patterns, eval    |
