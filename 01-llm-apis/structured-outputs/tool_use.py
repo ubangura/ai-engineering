@@ -1,5 +1,6 @@
 import requests
 from anthropic import Anthropic
+from anthropic.types import MessageParam, ToolUnionParam
 
 from api_config import dev_config
 
@@ -16,9 +17,11 @@ def get_weather() -> str:
     )
 
 
-messages = [{"role": "user", "content": "What's the weather like today?"}]
+messages: list[MessageParam] = [
+    {"role": "user", "content": "What's the weather like today?"}
+]
 
-tools = [
+tools: list[ToolUnionParam] = [
     {
         "name": "get_weather",
         "description": "Get the current weather for the user location",
