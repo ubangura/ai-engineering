@@ -45,6 +45,8 @@ class APIConfig:
         self._output_tokens_used += response.usage.output_tokens
 
     def _print_usage_summary(self) -> None:
+        if self._input_tokens_used == 0 and self._output_tokens_used == 0:
+            return
         pricing = _PRICING.get(self.model, {"input": 0, "output": 0})
         input_cost = self._input_tokens_used / 1_000_000 * pricing["input"]
         output_cost = self._output_tokens_used / 1_000_000 * pricing["output"]
