@@ -20,11 +20,14 @@ def add_assistant_message(
     return messages
 
 
-def chat(messages: list[MessageParam], system: str | None = None) -> str:
+def chat(
+    messages: list[MessageParam], system: str | None = None, temperature: float = 1.0
+) -> str:
     params = {
         "model": dev_config.model,
         "max_tokens": dev_config.max_tokens,
         "messages": messages,
+        "temperature": temperature,
     }
 
     if system:
