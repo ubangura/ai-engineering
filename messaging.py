@@ -22,20 +22,22 @@ def add_assistant_message(
 
 def chat(
     messages: list[MessageParam],
+    max_tokens: int = dev_config.max_tokens,
     system: str | None = None,
     temperature: float = 1.0,
     stop_sequences: list[str] | None = None,
 ) -> str:
     params = {
         "model": dev_config.model,
-        "max_tokens": dev_config.max_tokens,
+        "max_tokens": max_tokens,
         "messages": messages,
         "temperature": temperature,
-        "stop_sequences": stop_sequences,
     }
 
     if system:
         params["system"] = system
+    if stop_sequences:
+        params["stop_sequences"] = stop_sequences
 
     message = client.messages.create(**params)
     return message.content[0].text
