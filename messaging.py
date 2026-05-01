@@ -21,13 +21,17 @@ def add_assistant_message(
 
 
 def chat(
-    messages: list[MessageParam], system: str | None = None, temperature: float = 1.0
+    messages: list[MessageParam],
+    system: str | None = None,
+    temperature: float = 1.0,
+    stop_sequences: list[str] | None = None,
 ) -> str:
     params = {
         "model": dev_config.model,
         "max_tokens": dev_config.max_tokens,
         "messages": messages,
         "temperature": temperature,
+        "stop_sequences": stop_sequences,
     }
 
     if system:
