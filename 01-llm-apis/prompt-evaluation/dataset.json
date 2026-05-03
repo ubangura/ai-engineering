@@ -1,14 +1,17 @@
 [
   {
-    "task": "Parse an AWS S3 bucket name from an S3 URI in the format 's3://bucket-name/key/path' and extract just the bucket name",
-    "format": "Regex"
+    "task": "Parse an AWS S3 bucket name from a full S3 URI (e.g., 's3://my-bucket/path/to/file.txt') and extract only the bucket name",
+    "format": "Regex",
+    "solution_criteria": "Regex pattern should correctly match and capture the bucket name portion of S3 URIs, handling various valid AWS bucket name formats"
   },
   {
-    "task": "Create a JSON CloudFormation template snippet that defines an AWS IAM role with a trust policy allowing EC2 instances to assume it",
-    "format": "JSON"
+    "task": "Create a Python function that takes an AWS CloudWatch log event and extracts the timestamp and log message fields",
+    "format": "Python",
+    "solution_criteria": "Function should parse the event JSON structure, extract '@timestamp' and 'message' fields, and return them as a tuple or dictionary with proper error handling"
   },
   {
-    "task": "Write a Python function that takes an AWS DynamoDB item (as a dictionary) and converts all empty string values to None to prepare for DynamoDB compatibility",
-    "format": "Python"
+    "task": "Generate a JSON object representing an AWS IAM policy that allows read-only access to a specific S3 bucket",
+    "format": "JSON",
+    "solution_criteria": "JSON should be valid IAM policy format with proper Version, Statement, Effect, Action, and Resource fields that grant s3:GetObject and s3:ListBucket permissions"
   }
 ]

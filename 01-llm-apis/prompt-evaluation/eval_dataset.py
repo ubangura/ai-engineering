@@ -15,6 +15,7 @@ def generate_dataset():
         {
           "task": "Description of task",
           "format": "Python"
+          "solution_criteria": "Key criteria for evaluating the solution" 
         },
         ...additional
     ]
