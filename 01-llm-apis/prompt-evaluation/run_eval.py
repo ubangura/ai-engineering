@@ -8,7 +8,7 @@ evaluator = PromptEvaluator(max_concurrent_tasks=1)
 
 def run_prompt(prompt_inputs):
     prompt = f"""
-    What should this person eat?
+    Generate a one-day meal plan for an athelete that meets their dietary restrictions.
 
     - Height: {prompt_inputs["height"]}
     - Weight: {prompt_inputs["weight"]}
@@ -30,6 +30,6 @@ results = evaluator.run_evaluation(
     - Macronutrient breakdown
     - Meals with exact foods, portions, and timing
 """,
-    json_output_file="output/output_v1.json",
-    html_output_file="output/output_v1.html",
+    json_output_file="output/output_v2.json",
+    html_output_file="output/output_v2.html",
 )
