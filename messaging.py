@@ -40,4 +40,5 @@ def chat(
         params["stop_sequences"] = stop_sequences
 
     message = client.messages.create(**params)
+    dev_config.record_token_usage(message)
     return message.content[0].text
