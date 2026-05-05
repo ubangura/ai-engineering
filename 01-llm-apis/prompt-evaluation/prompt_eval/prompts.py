@@ -1,3 +1,131 @@
+MEAL_PLAN_PROMPT_TEMPLATE = """
+    Generate a one-day meal plan for an athelete that meets their dietary restrictions.
+
+    <athelete_information>
+    - Height: {height}
+    - Weight: {weight}
+    - Goal: {goal}
+    - Dietary restrictions: {restrictions}
+    </athelete_information>
+
+    Guidelines:
+    1. Include accurate daily calorie amount
+    2. Show protein, fat, and carb amounts
+    3. Specify when to eat each meal
+    4. Use only foods that fit restrictions
+    5. List all portion sizes in grams
+    6. Keep budget-friendly if mentioned
+
+    Here is an example with a sample input and an ideal output:
+    <sample_input>
+    height: 178 cm
+    weight: 68 kg
+    goal: Marathon training with high-intensity endurance performance
+    restrictions: Vegan, gluten-free
+    </sample_input>
+    <ideal_output>
+    # One-Day Vegan, Gluten-Free Marathon Training Meal Plan
+
+    **Athlete Profile:** 178 cm, 68 kg | Estimated Daily Needs: ~2,800-3,200 calories, 110-136g protein, 420-480g carbs
+
+    ---
+
+    ## **BREAKFAST (7:00 AM)** | 650 cal | 18g protein
+    - **Gluten-free oatmeal** (60g) with almond milk
+    - **Toppings:** sliced banana, ground flaxseed (2 tbsp), almond butter (2 tbsp), maple syrup
+    - **Side:** Fresh berries (blueberries, raspberries)
+    - **Drink:** Green tea with lemon
+
+    *Why: Quick-digesting carbs + plant-based protein for morning energy*
+
+    ---
+
+    ## **MID-MORNING SNACK (10:00 AM)** | 280 cal | 12g protein
+    - **Smoothie bowl:**
+      - Plant-based protein powder (vegan, GF) - 1 scoop
+      - Coconut milk (½ cup)
+      - Banana, mango
+      - Granola (GF certified)
+      - Hemp seeds
+
+    *Why: Sustained energy before training*
+
+    ---
+
+    ## **LUNCH (1:00 PM)** | 750 cal | 22g protein
+    - **Quinoa power bowl:**
+      - Cooked quinoa (¾ cup)
+      - Roasted sweet potato (150g)
+      - Steamed broccoli & bell peppers
+      - Baked tofu (120g)
+      - Tahini dressing (2 tbsp)
+      - Avocado (½)
+
+    *Why: Complete protein + complex carbs for afternoon training*
+
+    ---
+
+    ## **PRE-WORKOUT SNACK (4:00 PM)** | 320 cal | 8g protein
+    - **Rice cakes** (2) with almond butter & banana slices
+    - **Dates** (3-4) for quick energy
+    - **Water with electrolyte powder**
+
+    *Why: Quick carbs + fat for endurance performance*
+
+    ---
+
+    ## **DINNER (7:00 PM)** | 800 cal | 28g protein
+    - **Lentil & vegetable stir-fry:**
+      - Red lentils (¾ cup cooked)
+      - Mixed vegetables (carrots, snap peas, mushrooms)
+      - Garlic, ginger, tamari (GF soy sauce)
+    - **Brown rice** (¾ cup)
+    - **Pumpkin seeds** (2 tbsp) for omega-3s
+
+    *Why: High-quality plant protein + recovery carbs*
+
+    ---
+
+    ## **EVENING SNACK (9:30 PM)** | 200 cal | 8g protein
+    - **Homemade energy balls:**
+      - Dates + almonds + vegan protein powder
+    - **Herbal tea** (chamomile for recovery)
+
+    *Why: Recovery nutrition + sleep support*
+
+    ---
+
+    ## **DAILY TOTALS**
+    - **Calories:** ~3,000
+    - **Protein:** 96g (12.8% of intake)
+    - **Carbs:** 420g (56% of intake)
+    - **Fat:** 70g (21% of intake)
+    - **Fiber:** 45g+
+
+    ---
+
+    ## **HYDRATION**
+    - **Morning-afternoon:** 2-3L water + 1 electrolyte drink during/after training
+    - **Evening:** Herbal tea as tolerated
+
+    ---
+
+    ## **NOTES FOR MARATHON TRAINING**
+    ✓ Prioritize carb-loading 2-3 days before long runs
+    ✓ Adjust portions based on training intensity
+    ✓ Consider vegan BCAAs or complete amino acid supplements
+    ✓ All items certified gluten-free to avoid cross-contamination
+    ✓ Test all foods during training before race day
+    </ideal_output>
+
+    <explanation>
+    The solution fully satisfies all mandatory requirements with precise daily totals, complete macronutrient breakdowns, and detailed meal timing with exact portions.
+    All foods are confirmed vegan and gluten-free. The plan is well-structured for marathon training with appropriate calorie distribution and carbohydrate emphasis.
+    Secondary criteria are largely met: meals cover all day periods, are reasonably practical (though some require prep), and provide adequate nutrition.
+    The minor protein shortfall relative to elite athlete standards and some preparation complexity prevent a perfect score, but these are minor issues in an otherwise comprehensive solution.
+    </explanation>
+    """
+
 GRADE_OUTPUT_EXTRA_CRITERIA_TEMPLATE = """
 Mandatory Requirements - ANY VIOLATION MEANS AUTOMATIC FAILURE (score of 3 or lower):
 <extra_important_criteria>

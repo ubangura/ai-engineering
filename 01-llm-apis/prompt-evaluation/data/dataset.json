@@ -3,48 +3,46 @@
     "prompt_inputs": {
       "height": "178 cm",
       "weight": "68 kg",
-      "goal": "Marathon training with high-intensity endurance performance",
-      "restrictions": "Vegan, gluten-free"
-    },
-    "solution_criteria": [
-      "Meal plan covers all meals for one day (breakfast, lunch, dinner, snacks)",
-      "All foods are vegan and gluten-free",
-      "Plan provides adequate calories and protein for marathon training recovery",
-      "Meals are concise and practical to prepare"
-    ],
-    "task_description": "Write a compact, concise 1 day meal plan for an athlete",
-    "scenario": "Testing with a high-performance endurance athlete (marathon runner) with multiple dietary restrictions (vegan, gluten-free) to evaluate meal plan feasibility while maintaining caloric and nutrient density requirements"
-  },
-  {
-    "prompt_inputs": {
-      "height": "203 cm",
-      "weight": "130 kg",
-      "goal": "muscle building for strength training",
-      "restrictions": "none"
-    },
-    "solution_criteria": [
-      "Meal plan contains at least 4 meals/snacks distributed throughout the day",
-      "Total daily protein intake is at least 2.6g per kg of body weight (338g minimum)",
-      "Total daily caloric intake supports muscle building for a 130kg athlete (approximately 3500-4000 calories)",
-      "Meal plan is presented in a compact, concise format suitable for quick reference"
-    ],
-    "task_description": "Write a compact, concise 1 day meal plan for an athlete",
-    "scenario": "Testing with a strength-training athlete (weightlifter) with extreme body metrics (very tall and heavy) to assess whether the meal plan appropriately scales protein intake and total calories for muscle building goals"
-  },
-  {
-    "prompt_inputs": {
-      "height": "160 cm",
-      "weight": "52 kg",
-      "goal": "Maintain lean muscle while reducing body fat for competition",
+      "goal": "Marathon training - carbohydrate loading with sustained energy for high-mileage week",
       "restrictions": "None"
     },
     "solution_criteria": [
-      "Meal plan contains exactly 4 meals (breakfast, lunch, snack, dinner) with portion sizes appropriate for a 52 kg athlete",
-      "Total daily calories create a moderate deficit (approximately 1,800-2,000 kcal) suitable for weight management",
-      "Includes adequate protein (minimum 1.2g per kg body weight) to preserve muscle during deficit",
-      "Plan is presented in compact, easy-to-read format with clear meal timing"
+      "Meal plan covers all three meals plus snacks for one complete day",
+      "Emphasizes carbohydrates (55-65% of calories) to support endurance training",
+      "Total daily calories align with marathon runner's high energy expenditure (3000-3500 kcal range)",
+      "Includes specific food items and portion sizes for practical implementation"
     ],
     "task_description": "Write a compact, concise 1 day meal plan for an athlete",
-    "scenario": "Testing with a lightweight sport athlete (gymnast) with minimal restrictions but weight management goals to verify the meal plan balances nutritional completeness with controlled portion sizes and caloric deficits"
+    "scenario": "Testing with a lightweight endurance athlete (marathon runner) with high caloric needs, minimal restrictions, and focus on carbohydrate-loading and sustained energy"
+  },
+  {
+    "prompt_inputs": {
+      "height": "180 cm",
+      "weight": "95 kg",
+      "goal": "Muscle building with high protein intake for strength training",
+      "restrictions": "Vegan (no animal products)"
+    },
+    "solution_criteria": [
+      "Meal plan covers all 3 meals for 1 day with vegan protein sources meeting ~2.2g protein per kg bodyweight (~210g total)",
+      "Includes specific food items and portions that are realistic and achievable",
+      "Addresses caloric needs appropriate for a heavyweight strength athlete in a muscle-building phase"
+    ],
+    "task_description": "Write a compact, concise 1 day meal plan for an athlete",
+    "scenario": "Testing with a heavyweight strength-focused athlete (bodybuilder) with specific muscle-building macro requirements and multiple dietary restrictions (vegan/vegetarian)"
+  },
+  {
+    "prompt_inputs": {
+      "height": "183 cm",
+      "weight": "78 kg",
+      "goal": "maintain energy and performance for early morning tennis training and matches",
+      "restrictions": "severe peanut allergy; requires alternative protein and fat sources"
+    },
+    "solution_criteria": [
+      "Meal plan covers all three meals and accounts for early morning training schedule",
+      "All meals are peanut-free with creative substitutions for protein and healthy fats",
+      "Plan is compact and concise (suitable for quick reference)"
+    ],
+    "task_description": "Write a compact, concise 1 day meal plan for an athlete",
+    "scenario": "Testing with a sport-specific scenario: a professional tennis player with moderate build, early morning training schedule, and an allergy-based dietary restriction that requires creative meal substitutions"
   }
 ]
