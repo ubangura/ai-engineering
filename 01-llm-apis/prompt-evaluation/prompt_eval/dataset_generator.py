@@ -1,12 +1,17 @@
 import concurrent.futures
 import json
-from textwrap import dedent
 
 from messaging import add_assistant_message, add_user_message, chat
 
 from .constants import MAX_TOKENS
 from .models import GeneratedTestCase, TestCase
 from .progress import ProgressReporter
+from .prompts import (
+    GENERATE_IDEAS_SYSTEM_PROMPT,
+    GENERATE_IDEAS_TEMPLATE,
+    GENERATE_TEST_CASE_SYSTEM_PROMPT,
+    GENERATE_TEST_CASE_TEMPLATE,
+)
 from .template import escape_newlines, render
 
 
@@ -23,52 +28,13 @@ class DatasetGenerator:
         num_cases: int,
     ) -> list[str]:
         """Ask an LLM for `num_cases` distinct scenario descriptions that exercise different aspects of `task_description`. Returns a list of short idea strings."""
-        prompt = """
-        Generate {num_cases} unique, diverse ideas for testing a prompt that accomplishes this task:
-
-        <task_description>
-        {task_description}
-        </task_description>
-
-        The prompt will receive the following inputs
-        <prompt_inputs>
-        {prompt_inputs_spec}
-        </prompt_inputs>
-
-        Each idea should represent a distinct scenario or example that tests different aspects of the task.
-
-        Output Format:
-        Provide your response as a structured JSON array where each item is a brief description of the idea.
-
-        Example:
-        ```json
-        [
-            "Testing with technical computer science terminology",
-            "Testing with medical research findings",
-            "Testing with complex mathematical concepts",
-            ...
-        ]
-        ```
-
-        Ensure each idea is:
-        - Clearly distinct from the others
-        - Relevant to the task description
-        - Specific enough to guide generation of a full test case
-        - Quick to solve without requiring extensive computation or multi-step processing
-        - Solvable with no more than 400 tokens of output
-
-        Remember, only generate {num_cases} unique ideas
-        """
-
-        system_prompt = "You are a test scenario designer specialized in creating diverse, unique testing scenarios."
-
         example_prompt_inputs = "".join(
             f'"{key}": str # {escape_newlines(value)},'
             for key, value in prompt_inputs_spec.items()
         )
 
         rendered_prompt = render(
-            dedent(prompt),
+            GENERATE_IDEAS_TEMPLATE,
             {
                 "task_description": task_description,
                 "num_cases": num_cases,
@@ -82,7 +48,7 @@ class DatasetGenerator:
             messages,
             max_tokens=MAX_TOKENS,
             stop_sequences=["```"],
-            system=system_prompt,
+            system=GENERATE_IDEAS_SYSTEM_PROMPT,
             temperature=1.0,
         )
 
@@ -104,77 +70,8 @@ class DatasetGenerator:
         )
         allowed_keys = ", ".join(f'"{key}"' for key in prompt_inputs_spec)
 
-        prompt = """
-        Generate a single detailed test case for a prompt evaluation based on:
-
-        <task_description>
-        {task_description}
-        </task_description>
-
-        <specific_idea>
-        {idea}
-        </specific_idea>
-
-        <allowed_input_keys>
-        {allowed_keys}
-        </allowed_input_keys>
-
-        Output Format:
-        ```json
-        {{
-            "prompt_inputs": {{
-            {example_prompt_inputs}
-            }},
-            "solution_criteria": ["criterion 1", "criterion 2", ...] // Concise list of criteria for evaluating the solution, 1 to 4 items
-        }}
-        ```
-
-        IMPORTANT REQUIREMENTS:
-        - You MUST ONLY use these exact input keys in your prompt_inputs: {allowed_keys}
-        - Do NOT add any additional keys to prompt_inputs
-        - All keys listed in allowed_input_keys must be included in your response
-        - Make the test case realistic and practically useful
-        - Include measurable, concise solution criteria
-        - The solution criteria should ONLY address the direct requirements of the task description and the generated prompt_inputs
-        - Avoid over-specifying criteria with requirements that go beyond the core task
-        - Keep solution criteria simple, focused, and directly tied to the fundamental task
-        - The test case should be tailored to the specific idea provided
-        - Quick to solve without requiring extensive computation or multi-step processing
-        - Solvable with no more than 400 tokens of output
-        - DO NOT include any fields beyond those specified in the output format
-
-        Here's an example of a sample input with an ideal output:
-        <sample_input>
-        <sample_task_description>
-        Extract topics out of a passage of text
-        </sample_task_description>
-        <sample_specific_idea>
-        Testing with a text that contains multiple nested topics and subtopics (e.g., a passage about renewable energy that covers solar power economics, wind turbine technology, and policy implications simultaneously)
-        </sample_specific_idea>
-
-        <sample_allowed_input_keys>
-        "content"
-        </sample_allowed_input_keys>
-        </sample_input>
-        <ideal_output>
-        ```json
-        {
-            "prompt_inputs": {
-                "content": "The transition to renewable energy encompasses numerous interdependent dimensions. Solar photovoltaic technology has seen dramatic cost reductions, with panel efficiency improving 24% since 2010 while manufacturing costs declined by 89%, making it economically competitive with fossil fuels in many markets. Concurrently, wind energy has evolved through innovative turbine designs featuring carbon-fiber composite blades and advanced control systems that increase energy capture by 35% in low-wind conditions."
-            },
-            "solution_criteria": [
-                "Includes all topics mentioned"
-            ]
-        }
-        ```
-        </ideal_output>
-        This is ideal output because the solution criteria is concise and doesn't ask for anything outside of the scope of the task description.
-        """
-
-        system_prompt = "You are a test case creator specializing in designing evaluation scenarios."
-
         rendered_prompt = render(
-            dedent(prompt),
+            GENERATE_TEST_CASE_TEMPLATE,
             {
                 "allowed_keys": allowed_keys,
                 "task_description": task_description,
@@ -189,7 +86,7 @@ class DatasetGenerator:
             messages,
             max_tokens=MAX_TOKENS,
             stop_sequences=["```"],
-            system=system_prompt,
+            system=GENERATE_TEST_CASE_SYSTEM_PROMPT,
             temperature=0.7,
         )
 
