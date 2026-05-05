@@ -35,5 +35,5 @@ def generate_dataset():
 
 dataset = generate_dataset()
 
-with open("dataset.json", "w") as f:
+with open("data/dataset.json", "w") as f:
     json.dump(dataset, f, indent=2)
