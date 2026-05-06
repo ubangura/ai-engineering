@@ -67,7 +67,7 @@ class APIConfig:
 dev_config = APIConfig(
     api_key=os.environ.get("ANTHROPIC_API_KEY") or "",
     model=HAIKU,
-    max_tokens=50,
+    max_tokens=500,
 )
 
 prod_config = APIConfig(
