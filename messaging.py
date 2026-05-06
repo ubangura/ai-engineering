@@ -1,5 +1,5 @@
 from anthropic import Anthropic
-from anthropic.types import Message, MessageParam, ToolUnionParam
+from anthropic.types import Message, MessageParam, ToolResultBlockParam, ToolUnionParam
 
 from api_config import dev_config
 
@@ -7,7 +7,7 @@ client = Anthropic()
 
 
 def add_user_message(
-    messages: list[MessageParam], message: Message | str
+    messages: list[MessageParam], message: Message | str | list[ToolResultBlockParam]
 ) -> list[MessageParam]:
     user_message: MessageParam = {
         "role": "user",
