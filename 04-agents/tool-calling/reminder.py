@@ -2,22 +2,17 @@ import json
 
 from anthropic import Anthropic
 from anthropic.types import Message, MessageParam, ToolResultBlockParam
-from tools.add_duration import add_duration_to_datetime, add_duration_to_datetime_schema
-from tools.current_datetime import get_current_datetime, get_current_datetime_schema
-from tools.set_reminder import set_reminder, set_reminder_schema
+from tools import all_tools
 
 from messaging import add_assistant_message, add_user_message, chat, text_from_message
 
 client = Anthropic()
 
+tool_registry = {tool.schema["name"]: tool.function for tool in all_tools}
+
 
 def run_tool(tool_name: str, tool_input):
-    if tool_name == "get_current_datetime":
-        return get_current_datetime(**tool_input)
-    elif tool_name == "add_duration_to_datetime":
-        return add_duration_to_datetime(**tool_input)
-    elif tool_name == "set_reminder":
-        return set_reminder(**tool_input)
+    return tool_registry[tool_name](**tool_input)
 
 
 def run_tools(message: Message) -> list[ToolResultBlockParam]:
@@ -48,11 +43,7 @@ def run_conversation(messages: list[MessageParam]) -> list[MessageParam]:
     while True:
         message = chat(
             messages,
-            tools=[
-                get_current_datetime_schema,
-                add_duration_to_datetime_schema,
-                set_reminder_schema,
-            ],
+            tools=[tool.schema for tool in all_tools],
         )
 
         add_assistant_message(messages, message)
