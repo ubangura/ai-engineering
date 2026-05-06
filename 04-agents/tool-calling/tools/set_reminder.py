@@ -1,7 +1,5 @@
 from anthropic.types import ToolParam
 
-from .tool import Tool
-
 
 def set_reminder(content, timestamp):
     print(f"----\nSetting the following reminder for {timestamp}:\n{content}\n----")
@@ -27,5 +25,3 @@ set_reminder_schema = ToolParam(
         },
     }
 )
-
-tool = Tool(schema=set_reminder_schema, function=set_reminder)

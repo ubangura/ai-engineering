@@ -2,8 +2,6 @@ from datetime import datetime
 
 from anthropic.types import ToolParam
 
-from .tool import Tool
-
 
 def get_current_datetime(date_format: str = "%Y-%m-%d %H:%M:%S") -> str:
     if not date_format:
@@ -28,5 +26,3 @@ get_current_datetime_schema = ToolParam(
         },
     }
 )
-
-tool = Tool(schema=get_current_datetime_schema, function=get_current_datetime)

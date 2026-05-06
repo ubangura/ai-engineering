@@ -2,8 +2,6 @@ from datetime import datetime, timedelta
 
 from anthropic.types import ToolParam
 
-from .tool import Tool
-
 
 def add_duration_to_datetime(
     datetime_str: str,
@@ -84,5 +82,3 @@ add_duration_to_datetime_schema = ToolParam(
         },
     }
 )
-
-tool = Tool(schema=add_duration_to_datetime_schema, function=add_duration_to_datetime)
