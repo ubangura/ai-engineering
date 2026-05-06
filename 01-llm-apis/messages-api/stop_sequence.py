@@ -1,4 +1,4 @@
-from messaging import add_assistant_message, add_user_message, chat
+from messaging import add_assistant_message, add_user_message, chat, text_from_message
 
 messages = add_user_message(
     [],
@@ -6,6 +6,6 @@ messages = add_user_message(
 )
 add_assistant_message(messages, "```json")
 
-print(chat(messages, max_tokens=100))
+print(text_from_message(chat(messages, max_tokens=100)))
 
-print(chat(messages, max_tokens=100, stop_sequences=["```"]))
+print(text_from_message(chat(messages, max_tokens=100, stop_sequences=["```"])))

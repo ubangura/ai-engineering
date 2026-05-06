@@ -2,7 +2,7 @@ from prompt_eval.constants import MAX_TOKENS
 from prompt_eval.evaluator import PromptEvaluator
 from prompt_eval.prompts import MEAL_PLAN_PROMPT_TEMPLATE
 
-from messaging import add_user_message, chat
+from messaging import add_user_message, chat, text_from_message
 
 evaluator = PromptEvaluator(max_concurrent_tasks=1)
 
@@ -11,7 +11,7 @@ def run_prompt(prompt_inputs):
     prompt = MEAL_PLAN_PROMPT_TEMPLATE.format(**prompt_inputs)
     messages = []
     add_user_message(messages, prompt)
-    return chat(messages, max_tokens=MAX_TOKENS)
+    return text_from_message(chat(messages, max_tokens=MAX_TOKENS))
 
 
 results = evaluator.run_evaluation(

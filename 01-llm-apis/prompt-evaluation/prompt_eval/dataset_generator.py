@@ -1,7 +1,7 @@
 import concurrent.futures
 import json
 
-from messaging import add_assistant_message, add_user_message, chat
+from messaging import add_assistant_message, add_user_message, chat, text_from_message
 
 from .constants import MAX_TOKENS
 from .models import GeneratedTestCase, TestCase
@@ -44,13 +44,13 @@ class DatasetGenerator:
 
         messages = add_user_message([], rendered_prompt)
         add_assistant_message(messages, "```json")
-        text = chat(
+        text = text_from_message(chat(
             messages,
             max_tokens=MAX_TOKENS,
             stop_sequences=["```"],
             system=GENERATE_IDEAS_SYSTEM_PROMPT,
             temperature=1.0,
-        )
+        ))
 
         return json.loads(text)
 
@@ -82,13 +82,13 @@ class DatasetGenerator:
 
         messages = add_user_message([], rendered_prompt)
         add_assistant_message(messages, "```json")
-        text = chat(
+        text = text_from_message(chat(
             messages,
             max_tokens=MAX_TOKENS,
             stop_sequences=["```"],
             system=GENERATE_TEST_CASE_SYSTEM_PROMPT,
             temperature=0.7,
-        )
+        ))
 
         generated = GeneratedTestCase.model_validate_json(text)
         return TestCase(

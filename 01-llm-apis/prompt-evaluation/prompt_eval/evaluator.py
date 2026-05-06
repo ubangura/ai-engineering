@@ -3,7 +3,7 @@ import json
 from collections.abc import Callable
 from statistics import mean
 
-from messaging import add_assistant_message, add_user_message, chat
+from messaging import add_assistant_message, add_user_message, chat, text_from_message
 
 from .constants import MAX_TOKENS
 from .models import EvaluationResult, Grade, TestCase
@@ -51,12 +51,12 @@ class PromptEvaluator:
 
         messages = add_user_message([], eval_prompt)
         add_assistant_message(messages, "```json")
-        eval_text = chat(
+        eval_text = text_from_message(chat(
             messages,
             max_tokens=MAX_TOKENS,
             stop_sequences=["```"],
             temperature=0.0,
-        )
+        ))
         return Grade.model_validate_json(eval_text)
 
     def run_test_case(

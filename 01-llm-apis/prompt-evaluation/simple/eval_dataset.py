@@ -1,6 +1,6 @@
 import json
 
-from messaging import add_assistant_message, add_user_message, chat
+from messaging import add_assistant_message, add_user_message, chat, text_from_message
 
 
 def generate_dataset():
@@ -29,7 +29,7 @@ def generate_dataset():
 
     messages = add_user_message([], prompt)
     messages = add_assistant_message(messages, "```json")
-    text = chat(messages, max_tokens=1000, stop_sequences=["\n```"])
+    text = text_from_message(chat(messages, max_tokens=1000, stop_sequences=["\n```"]))
     return json.loads(text)
 
 

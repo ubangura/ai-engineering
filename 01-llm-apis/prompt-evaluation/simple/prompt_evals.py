@@ -4,7 +4,7 @@ import re
 from statistics import mean
 from typing import Literal, TypedDict
 
-from messaging import add_assistant_message, add_user_message, chat
+from messaging import add_assistant_message, add_user_message, chat, text_from_message
 
 MAX_TOKENS = 1000
 
@@ -74,7 +74,7 @@ def run_prompt(test_case: TestCase) -> str:
 
     messages = add_user_message([], prompt)
     messages = add_assistant_message(messages, "```code")
-    return chat(messages, max_tokens=MAX_TOKENS, stop_sequences=["\n```"])
+    return text_from_message(chat(messages, max_tokens=MAX_TOKENS, stop_sequences=["\n```"]))
 
 
 def grade_by_model(test_case: TestCase, output: str) -> ModelEval:
@@ -115,7 +115,7 @@ def grade_by_model(test_case: TestCase, output: str) -> ModelEval:
 
     messages = add_user_message([], eval_prompt)
     messages = add_assistant_message(messages, "```json")
-    output = chat(messages, max_tokens=MAX_TOKENS, stop_sequences=["\n```"])
+    output = text_from_message(chat(messages, max_tokens=MAX_TOKENS, stop_sequences=["\n```"]))
     return json.loads(output)
 
 
