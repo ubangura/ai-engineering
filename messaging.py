@@ -18,6 +18,7 @@ client = Anthropic()
 def add_user_message(
     messages: list[MessageParam], message: Message | str | list[ToolResultBlockParam]
 ) -> list[MessageParam]:
+    """Append a user turn to messages and return the list."""
     user_message: MessageParam = {
         "role": "user",
         "content": message.content if isinstance(message, Message) else message,
@@ -29,6 +30,7 @@ def add_user_message(
 def add_assistant_message(
     messages: list[MessageParam], message: Message | str
 ) -> list[MessageParam]:
+    """Append an assistant turn to messages and return the list."""
     assistant_message: MessageParam = {
         "role": "assistant",
         "content": message.content if isinstance(message, Message) else message,
@@ -46,6 +48,7 @@ def chat(
     tools: list[ToolUnionParam] | None = None,
     tool_choice: ToolChoiceParam | None = None,
 ) -> Message:
+    """Send messages to the model and return the response."""
     params = {
         "model": dev_config.model,
         "max_tokens": max_tokens,
@@ -68,6 +71,7 @@ def chat(
 
 
 def text_from_message(message: Message) -> str:
+    """Extract and join all text blocks from a message."""
     return "\n".join([block.text for block in message.content if block.type == "text"])
 
 
@@ -75,6 +79,11 @@ def run_tools(
     message: Message,
     tool_registry: dict[str, Callable],
 ) -> list[ToolResultBlockParam]:
+    """Execute all tool_use blocks in message and return their results.
+
+    Each tool is dispatched as `tool_registry[name](**input)`. Exceptions are
+    caught and returned as error results rather than raised.
+    """
     tool_results: list[ToolResultBlockParam] = []
 
     for block in message.content:
@@ -108,6 +117,10 @@ def run_agent_loop(
     system: str | None = None,
     tool_choice: ToolChoiceParam | None = None,
 ) -> list[MessageParam]:
+    """Run a chat+tool loop until the model stops requesting tool use.
+
+    Mutates and returns messages with the full conversation history appended.
+    """
     while True:
         message = chat(messages, tools=tools, system=system, tool_choice=tool_choice)
         add_assistant_message(messages, message)
