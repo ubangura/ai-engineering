@@ -1,12 +1,9 @@
 import json
 
-from anthropic import Anthropic
 from anthropic.types import Message, MessageParam, ToolResultBlockParam
 from tools import tool_registry, tool_schemas
 
 from messaging import add_assistant_message, add_user_message, chat, text_from_message
-
-client = Anthropic()
 
 
 def run_tool(tool_name: str, tool_input):
