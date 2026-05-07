@@ -189,7 +189,7 @@ class TextEditorTool:
             raise type(e)(str(e))
 
 
-def _run_text_editor(tool_input: dict[str, Any]) -> str:
+def _run_text_editor(**tool_input: Any) -> str:
     command = tool_input["command"]
     if command == "view":
         return _editor.view(tool_input["path"], tool_input.get("view_range"))

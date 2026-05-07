@@ -1,10 +1,7 @@
 import requests
-from anthropic import Anthropic
 from anthropic.types import MessageParam, ToolUnionParam
 
-from api_config import dev_config
-
-client = Anthropic()
+from messaging import add_assistant_message, add_user_message, chat
 
 
 def get_weather() -> str:
@@ -32,41 +29,17 @@ tools: list[ToolUnionParam] = [
     }
 ]
 
-response = client.messages.create(
-    model=dev_config.model,
-    max_tokens=dev_config.max_tokens,
-    messages=messages,
-    tools=tools,
-)
+response = chat(messages, tools=tools)
 
 if response.stop_reason != "tool_use":
     print(response.content[0].text)
     exit()
 
 tool_use = next(block for block in response.content if block.type == "tool_use")
-result = get_weather()
 
-messages.extend(
-    [
-        {"role": "assistant", "content": response.content},
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "tool_result",
-                    "tool_use_id": tool_use.id,
-                    "content": result,
-                }
-            ],
-        },
-    ]
-)
+add_assistant_message(messages, response)
+add_user_message(messages, [{"type": "tool_result", "tool_use_id": tool_use.id, "content": get_weather()}])
 
-final_response = client.messages.create(
-    model=dev_config.model,
-    max_tokens=dev_config.max_tokens,
-    messages=messages,
-    tools=tools,
-)
+final_response = chat(messages, tools=tools)
 
 print(final_response.content[0].text)
