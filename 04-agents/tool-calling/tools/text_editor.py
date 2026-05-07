@@ -2,6 +2,8 @@ import os
 import shutil
 from typing import Any, List, Optional
 
+from anthropic.types import ToolParam
+
 
 class TextEditorTool:
     def __init__(self, base_dir: str = "", backup_dir: str = ""):
@@ -192,20 +194,24 @@ def _run_text_editor(tool_input: dict[str, Any]) -> str:
     if command == "view":
         return _editor.view(tool_input["path"], tool_input.get("view_range"))
     elif command == "str_replace":
-        return _editor.str_replace(tool_input["path"], tool_input["old_str"], tool_input["new_str"])
+        return _editor.str_replace(
+            tool_input["path"], tool_input["old_str"], tool_input["new_str"]
+        )
     elif command == "create":
         return _editor.create(tool_input["path"], tool_input["file_text"])
     elif command == "insert":
-        return _editor.insert(tool_input["path"], tool_input["insert_line"], tool_input["insert_text"])
+        return _editor.insert(
+            tool_input["path"], tool_input["insert_line"], tool_input["insert_text"]
+        )
     else:
         raise ValueError(f"Unknown text editor command: {command}")
 
 
 _editor = TextEditorTool()
 
-tool_schemas: list[dict[str, str]] = [
+tool_schema: ToolParam = ToolParam(
     {"type": "text_editor_20250728", "name": "str_replace_based_edit_tool"}
-]
+)
 
 tool_registry: dict[str, Any] = {
     "str_replace_based_edit_tool": _run_text_editor,

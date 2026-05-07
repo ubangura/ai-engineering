@@ -1,7 +1,7 @@
 import json
 
 from anthropic.types import Message, MessageParam, ToolResultBlockParam
-from tools.text_editor import tool_registry, tool_schemas
+from tools.text_editor import tool_registry, tool_schema
 
 from messaging import add_assistant_message, add_user_message, chat, text_from_message
 
@@ -41,7 +41,7 @@ def run_conversation(messages: list[MessageParam]) -> list[MessageParam]:
     while True:
         message = chat(
             messages,
-            tools=tool_schemas,
+            tools=[tool_schema],
         )
 
         add_assistant_message(messages, message)
