@@ -8,4 +8,4 @@ messages = add_user_message(
     Then create a ./test.py file to test your implementation.""",
 )
 
-run_agent_loop(messages, [tool_schema], tool_registry)
+run_agent_loop(messages, [tool_schema], tool_registry, max_tokens=1000)
