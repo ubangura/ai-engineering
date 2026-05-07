@@ -58,7 +58,7 @@ def run_conversation(messages: list[MessageParam]) -> list[MessageParam]:
 
 messages = add_user_message(
     [],
-    "Set a reminder for my doctor's appointment. It's 177 days after January 1, 2050.",
+    "Using the batch tool, set a reminder for my doctor's appointment. It's 177 days from today.",
 )
 
 message = run_conversation(messages)
