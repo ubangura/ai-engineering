@@ -114,6 +114,7 @@ def run_agent_loop(
     messages: list[MessageParam],
     tools: list[ToolUnionParam],
     tool_registry: dict[str, Callable],
+    max_tokens: int = dev_config.max_tokens,
     system: str | None = None,
     tool_choice: ToolChoiceParam | None = None,
 ) -> list[MessageParam]:
@@ -122,7 +123,13 @@ def run_agent_loop(
     Mutates and returns messages with the full conversation history appended.
     """
     while True:
-        message = chat(messages, tools=tools, system=system, tool_choice=tool_choice)
+        message = chat(
+            messages,
+            tools=tools,
+            max_tokens=max_tokens,
+            system=system,
+            tool_choice=tool_choice,
+        )
         add_assistant_message(messages, message)
 
         if message.stop_reason != "tool_use":
