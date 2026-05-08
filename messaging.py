@@ -39,6 +39,9 @@ def add_assistant_message(
     return messages
 
 
+MINIMUM_THINKING_BUDGET = 1024
+
+
 def chat(
     messages: list[MessageParam],
     max_tokens: int = dev_config.max_tokens,
@@ -47,6 +50,8 @@ def chat(
     stop_sequences: list[str] | None = None,
     tools: list[ToolUnionParam] | None = None,
     tool_choice: ToolChoiceParam | None = None,
+    thinking: bool = False,
+    thinking_budget: int = MINIMUM_THINKING_BUDGET,
 ) -> Message:
     """Send messages to the model and return the response."""
     params = {
@@ -64,6 +69,8 @@ def chat(
         params["tools"] = tools
     if tool_choice:
         params["tool_choice"] = tool_choice
+    if thinking:
+        params["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
 
     message = client.messages.create(**params)
     dev_config.record_token_usage(message)
