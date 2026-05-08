@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Evaluation Report</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: #f1f5f9;
+            color: #0f172a;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #0f172a;
+            padding: 36px 48px;
+        }
+        .header-inner {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 32px;
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #f8fafc;
+            letter-spacing: -0.01em;
+        }
+        .header-subtitle {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 40px;
+        }
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #f8fafc;
+            line-height: 1.1;
+            margin-top: 6px;
+        }
+        .stat-unit {
+            font-size: 16px;
+            font-weight: 400;
+            color: #64748b;
+        }
+
+        .main {
+            max-width: 1600px;
+            margin: 32px auto;
+            padding: 0 48px 48px;
+        }
+
+        .table-wrap {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead th {
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+
+        tbody tr { transition: background 0.1s; }
+        tbody tr:hover td { background: #f8fafc; }
+        tbody tr:last-child td { border-bottom: none; }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;
+            color: #334155;
+            line-height: 1.55;
+        }
+
+        tr.s-excellent td:first-child { border-left: 3px solid #16a34a; }
+        tr.s-good      td:first-child { border-left: 3px solid #65a30d; }
+        tr.s-medium    td:first-child { border-left: 3px solid #d97706; }
+        tr.s-poor      td:first-child { border-left: 3px solid #ea580c; }
+        tr.s-bad       td:first-child { border-left: 3px solid #dc2626; }
+
+        th:nth-child(1), td:nth-child(1) { width: 14%; }
+        th:nth-child(2), td:nth-child(2) { width: 13%; }
+        th:nth-child(3), td:nth-child(3) { width: 14%; }
+        th:nth-child(4), td:nth-child(4) { width: 27%; }
+        th:nth-child(5), td:nth-child(5) { width: 72px; text-align: center; }
+        th:nth-child(6), td:nth-child(6) { width: auto; }
+
+        .input-pair {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 5px;
+            align-items: baseline;
+        }
+        .input-pair:last-child { margin-bottom: 0; }
+        .input-key {
+            font-weight: 600;
+            color: #6366f1;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .input-value { color: #475569; }
+
+        .criteria-list {
+            padding-left: 14px;
+            color: #475569;
+        }
+        .criteria-list li { margin-bottom: 4px; }
+        .criteria-list li:last-child { margin-bottom: 0; }
+
+        .output-block {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #334155;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 280px;
+            overflow-y: auto;
+            margin: 0;
+        }
+
+        .score-col { text-align: center; }
+        .score-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+        }
+        .s-excellent { background: #dcfce7; color: #15803d; }
+        .s-good      { background: #d1fae5; color: #065f46; }
+        .s-medium    { background: #fef3c7; color: #92400e; }
+        .s-poor      { background: #ffedd5; color: #9a3412; }
+        .s-bad       { background: #fee2e2; color: #991b1b; }
+
+        .reasoning {
+            font-style: italic;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-inner">
+            <div>
+                <h1>Prompt Evaluation Report</h1>
+                <p class="header-subtitle">3 test cases &middot; pass threshold &ge; 7</p>
+            </div>
+            <div class="stats">
+                <div>
+                    <div class="stat-label">Total Cases</div>
+                    <div class="stat-value">3</div>
+                </div>
+                <div>
+                    <div class="stat-label">Avg Score</div>
+                    <div class="stat-value">8.3<span class="stat-unit"> / 10</span></div>
+                </div>
+                <div>
+                    <div class="stat-label">Pass Rate</div>
+                    <div class="stat-value">66.7<span class="stat-unit">%</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="main">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Scenario</th>
+                        <th>Inputs</th>
+                        <th>Criteria</th>
+                        <th>Output</th>
+                        <th>Score</th>
+                        <th>Reasoning</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="s-excellent">
+                        <td class="scenario">Testing with a lightweight endurance athlete (marathon runner) with high caloric needs, minimal restrictions, and focus on carbohydrate-loading and sustained energy</td>
+                        <td><div class="input-pair"><span class="input-key">height</span><span class="input-value">178 cm</span></div><div class="input-pair"><span class="input-key">weight</span><span class="input-value">68 kg</span></div><div class="input-pair"><span class="input-key">goal</span><span class="input-value">Marathon training - carbohydrate loading with sustained energy for high-mileage week</span></div><div class="input-pair"><span class="input-key">restrictions</span><span class="input-value">None</span></div></td>
+                        <td><ul class="criteria-list"><li>Meal plan covers all three meals plus snacks for one complete day</li><li>Emphasizes carbohydrates (55-65% of calories) to support endurance training</li><li>Total daily calories align with marathon runner's high energy expenditure (3000-3500 kcal range)</li><li>Includes specific food items and portion sizes for practical implementation</li></ul></td>
+                        <td><pre class="output-block"># One-Day Marathon Training Meal Plan
+
+**Athlete Profile:** 178 cm, 68 kg | Estimated Daily Needs: ~3,000-3,400 calories, 102-136g protein, 450-510g carbs
+
+---
+
+## **BREAKFAST (7:00 AM)** | 680 cal | 22g protein
+- **Oatmeal** (80g dry) with whole milk (200ml)
+- **Toppings:** banana (120g), honey (2 tbsp/30g), peanut butter (2 tbsp/32g)
+- **Side:** Whole wheat toast (2 slices/60g) with butter (10g)
+- **Drink:** Orange juice (250ml)
+
+*Why: High glycemic carbs + protein for morning energy and muscle support*
+
+---
+
+## **MID-MORNING SNACK (10:00 AM)** | 320 cal | 14g protein
+- **Smoothie:**
+  - Whole milk (300ml)
+  - Whey protein powder (1 scoop/30g)
+  - Blueberries (120g)
+  - Granola (40g)
+  - Honey (1 tbsp/15g)
+
+*Why: Quick-absorbing carbs + protein before training session*
+
+---
+
+## **LUNCH (1:00 PM)** | 820 cal | 35g protein
+- **Grilled chicken breast** (180g)
+- **White rice** (200g cooked)
+- **Roasted sweet potato** (180g)
+- **Mixed green salad** with olive oil dressing (1 tbsp/15ml)
+- **Apple** (150g)
+
+*Why: Lean protein + complex carbs for afternoon recovery and sustained energy*
+
+---
+
+## **PRE-WORKOUT SNACK (4:00 PM)** | 360 cal | 10g protein
+- **Bagel** (70g) with cream cheese (30g)
+- **Banana** (140g)
+- **Energy bar** (sports/cereal bar - 50g)
+- **Electrolyte drink** (500ml sports beverage)
+
+*Why: Quick-digesting carbs + minimal fiber for optimal workout fuel*
+
+---
+
+## **DINNER (7:30 PM)** | 850 cal | 40g protein
+- **Lean ground beef** (170g cooked)
+- **Pasta** (200g cooked)
+- **Marinara sauce** (150ml/100g)
+- **Parmesan cheese** (20g)
+- **Steamed broccoli** (150g) with butter (10g)
+- **Garlic bread** (1 slice/40g)
+
+*Why: High protein + carbs for muscle recovery and glycogen replenishment*
+
+---
+
+## **EVENING SNACK (9:00 PM)** | 370 cal | 15g protein
+- **Greek yogurt** (200g) with granola (50g)
+- **Honey drizzle** (1 tbsp/15g)
+- **Almonds** (30g)
+- **Milk** (200ml)
+
+*Why: Casein protein + carbs for overnight recovery and satiety*
+
+---
+
+## **DAILY TOTALS**
+- **Calories:** 3,400
+- **Protein:** 136g (16% of intake)
+- **Carbs:** 480g (56.5% of intake)
+- **Fat:** 80g (21.2% of intake)
+- **Fiber:** 32g
+
+---
+
+## **HYDRATION**
+- **Throughout day:** 3-3.5L water
+- **During/after training:** Electrolyte sports drink (500ml) + additional water as needed
+- **Evening:** Water or herbal tea
+
+---
+
+## **NOTES FOR MARATHON TRAINING**
+✓ Carb-loading phase: emphasize pasta, rice, bread, and fruit  
+✓ Timing: main carbs with each meal to maximize glycogen storage  
+✓ Protein distributed across all meals for optimal muscle repair  
+✓ Adjust portions up/down based on actual mileage that day  
+✓ Test all meals during training weeks before marathon day  
+✓ Consider electrolyte supplementation on long run days (90+ minutes)</pre></td>
+                        <td class="score-col"><div class="score-badge s-excellent">10</div></td>
+                        <td class="reasoning">The solution fully satisfies all three mandatory requirements with precision: daily caloric total is clearly stated (3,400 cal), macronutrient breakdown is provided with percentages, and all meals include exact foods, portions, and timing. The carbohydrate percentage (56.5%) aligns perfectly with the 55-65% target for endurance training. The caloric range (3,400 kcal) is appropriate for a 68kg marathon trainee in a high-mileage week. All secondary criteria are met: the plan covers breakfast, lunch, dinner, and multiple snacks; emphasizes carbohydrates appropriately; and provides practical implementation details. The only minor tension is between the 'compact, concise' language in the task description and the detailed presentation, though the detail enhances usability. The plan includes helpful contextual notes and hydration guidance that add value without detracting from core requirements.</td>
+                    </tr>
+                    <tr class="s-medium">
+                        <td class="scenario">Testing with a heavyweight strength-focused athlete (bodybuilder) with specific muscle-building macro requirements and multiple dietary restrictions (vegan/vegetarian)</td>
+                        <td><div class="input-pair"><span class="input-key">height</span><span class="input-value">180 cm</span></div><div class="input-pair"><span class="input-key">weight</span><span class="input-value">95 kg</span></div><div class="input-pair"><span class="input-key">goal</span><span class="input-value">Muscle building with high protein intake for strength training</span></div><div class="input-pair"><span class="input-key">restrictions</span><span class="input-value">Vegan (no animal products)</span></div></td>
+                        <td><ul class="criteria-list"><li>Meal plan covers all 3 meals for 1 day with vegan protein sources meeting ~2.2g protein per kg bodyweight (~210g total)</li><li>Includes specific food items and portions that are realistic and achievable</li><li>Addresses caloric needs appropriate for a heavyweight strength athlete in a muscle-building phase</li></ul></td>
+                        <td><pre class="output-block"># One-Day Vegan Muscle-Building Meal Plan
+
+**Athlete Profile:** 180 cm, 95 kg | Estimated Daily Needs: ~3,200-3,600 calories, 150-190g protein, 380-450g carbs
+
+---
+
+## **BREAKFAST (7:00 AM)** | 720 cal | 28g protein
+- **Tofu scramble:**
+  - Firm tofu (200g) crumbled with turmeric, nutritional yeast
+  - Olive oil (1 tbsp)
+  - Spinach (100g), tomatoes (80g), onions (50g)
+- **Whole grain toast** (2 slices) with almond butter (2 tbsp)
+- **Orange juice** (250ml)
+
+*Why: Complete plant-based protein to kickstart muscle synthesis + complex carbs*
+
+---
+
+## **MID-MORNING SNACK (10:00 AM)** | 380 cal | 22g protein
+- **Vegan protein smoothie:**
+  - Plant-based protein powder (30g) - 1 scoop
+  - Oat milk (300ml)
+  - Banana (150g)
+  - Peanut butter (2 tbsp)
+  - Oats (40g)
+
+*Why: Quick amino acids for muscle recovery between meals*
+
+---
+
+## **LUNCH (1:00 PM)** | 850 cal | 35g protein
+- **Chickpea & quinoa power bowl:**
+  - Cooked chickpeas (200g)
+  - Cooked quinoa (1 cup/200g)
+  - Roasted sweet potato (180g)
+  - Steamed broccoli (150g) & bell peppers (100g)
+  - Tahini dressing (3 tbsp)
+  - Hemp seeds (3 tbsp)
+
+*Why: High-quality complete protein + complex carbs for afternoon strength training*
+
+---
+
+## **PRE-WORKOUT SNACK (4:00 PM)** | 350 cal | 15g protein
+- **Energy balls:**
+  - Dates (100g, about 8-10)
+  - Almonds (60g)
+  - Vegan protein powder (15g)
+- **Rice cakes** (2) with almond butter (1 tbsp)
+- **Sports drink** (water + electrolytes, 500ml)
+
+*Why: Quick carbs + accessible protein for peak workout performance*
+
+---
+
+## **DINNER (7:30 PM)** | 820 cal | 38g protein
+- **Lentil & tofu stir-fry:**
+  - Red lentils (¾ cup cooked/150g)
+  - Extra-firm tofu (220g) cubed & pan-fried
+  - Mixed vegetables (broccoli, carrots, snap peas - 250g total)
+  - Garlic (3 cloves), ginger (1 tbsp), tamari (2 tbsp)
+  - Sesame oil (1.5 tbsp)
+- **Brown rice** (1 cup cooked/200g)
+- **Pumpkin seeds** (3 tbsp)
+
+*Why: Dual plant-protein sources for muscle recovery + glycogen replenishment*
+
+---
+
+## **EVENING SNACK (9:30 PM)** | 320 cal | 14g protein
+- **High-protein chia pudding:**
+  - Soy milk (250ml)
+  - Chia seeds (4 tbsp)
+  - Vegan protein powder (20g)
+  - Maple syrup (1 tbsp)
+  - Walnuts (30g)
+- **Herbal tea** (chamomile or passionflower)
+
+*Why: Slow-digesting proteins for overnight muscle repair + sleep support*
+
+---
+
+## **DAILY TOTALS**
+- **Calories:** ~3,440
+- **Protein:** 152g (17.7% of intake)
+- **Carbs:** 410g (47.7% of intake)
+- **Fat:** 95g (24.9% of intake)
+- **Fiber:** 52g+
+
+---
+
+## **HYDRATION**
+- **Throughout day:** 3-4L water minimum
+- **During workout:** 500ml sports drink (electrolytes + carbs)
+- **Post-workout:** 500ml water within 30 minutes
+
+---
+
+## **NOTES FOR MUSCLE BUILDING**
+✓ Space protein intake evenly across 6 meals (25-30g per meal for optimal muscle protein synthesis)  
+✓ Prioritize complete proteins: quinoa, tofu, chickpeas, lentils, hemp seeds  
+✓ Include vegan BCAAs or complete amino acid supplement for leucine optimization  
+✓ Consume 20-40g carbs within 30 minutes post-workout with protein  
+✓ All portions can be meal-prepped in bulk for budget efficiency  
+✓ Adjust portions +200 calories on heavy training days</pre></td>
+                        <td class="score-col"><div class="score-badge s-medium">6</div></td>
+                        <td class="reasoning">The solution meets all three mandatory requirements with clear daily totals, macronutrient breakdown, and detailed meals with portions and timing. However, it fails to meet the secondary criterion of achieving ~210g protein (2.2g/kg bodyweight). At 152g protein, the plan falls 58g short of the stated target, which is a significant gap for muscle-building goals. The plan is well-structured, realistic, and vegan-appropriate, but the protein shortfall is a material deficiency that prevents a higher score. The solution is competent but doesn't fully address the athlete's stated high-protein muscle-building needs.</td>
+                    </tr>
+                    <tr class="s-excellent">
+                        <td class="scenario">Testing with a sport-specific scenario: a professional tennis player with moderate build, early morning training schedule, and an allergy-based dietary restriction that requires creative meal substitutions</td>
+                        <td><div class="input-pair"><span class="input-key">height</span><span class="input-value">183 cm</span></div><div class="input-pair"><span class="input-key">weight</span><span class="input-value">78 kg</span></div><div class="input-pair"><span class="input-key">goal</span><span class="input-value">maintain energy and performance for early morning tennis training and matches</span></div><div class="input-pair"><span class="input-key">restrictions</span><span class="input-value">severe peanut allergy; requires alternative protein and fat sources</span></div></td>
+                        <td><ul class="criteria-list"><li>Meal plan covers all three meals and accounts for early morning training schedule</li><li>All meals are peanut-free with creative substitutions for protein and healthy fats</li><li>Plan is compact and concise (suitable for quick reference)</li></ul></td>
+                        <td><pre class="output-block"># One-Day Tennis Training Meal Plan (Peanut Allergy Safe)
+
+**Athlete Profile:** 183 cm, 78 kg | Estimated Daily Needs: ~2,800-3,200 calories, 117-156g protein, 420-480g carbs
+
+---
+
+## **BREAKFAST (6:30 AM)** | 650 cal | 22g protein
+- **Oatmeal** (70g dry) with whole milk (250ml)
+- **Toppings:** sliced banana (120g), sunflower seed butter (2 tbsp/32g), honey (1 tbsp)
+- **Side:** Scrambled eggs (2 large) with olive oil (1 tsp)
+- **Drink:** Orange juice (200ml)
+
+*Why: High-glycemic carbs + complete protein for early morning energy before tennis*
+
+---
+
+## **PRE-TRAINING SNACK (8:00 AM)** | 280 cal | 10g protein
+- **Greek yogurt** (200g, plain, 2% fat)
+- **Granola** (40g, verified peanut-free)
+- **Mixed berries** (100g: blueberries, strawberries)
+- **Honey drizzle** (1 tbsp)
+
+*Why: Quick-digesting carbs + protein 45 min before training starts*
+
+---
+
+## **LUNCH (12:30 PM)** | 800 cal | 32g protein
+- **Grilled chicken breast** (180g)
+- **Sweet potato** (200g, baked)
+- **Steamed broccoli** (150g)
+- **Olive oil drizzle** (1 tbsp)
+- **Brown rice** (¾ cup cooked/150g)
+- **Side salad:** mixed greens, cucumber, tomato with balsamic vinegar
+
+*Why: Lean protein + complex carbs for recovery and afternoon energy*
+
+---
+
+## **POST-TRAINING SNACK (3:30 PM)** | 350 cal | 18g protein
+- **Protein shake:**
+  - Whey protein powder (1 scoop/30g)
+  - Banana (120g)
+  - Whole milk (250ml)
+  - Almond butter (1.5 tbsp/24g)
+  - Honey (½ tbsp)
+- **Rice cakes** (2) with jam
+
+*Why: Optimal 3:1 carb-to-protein ratio for muscle recovery*
+
+---
+
+## **DINNER (7:00 PM)** | 750 cal | 35g protein
+- **Salmon fillet** (170g, grilled)
+- **Quinoa** (¾ cup cooked/150g)
+- **Roasted vegetables** (200g: bell peppers, zucchini, carrots)
+- **Avocado** (½ medium/60g)
+- **Lemon & herb dressing** (1 tbsp olive oil)
+
+*Why: Omega-3 fatty acids + complete protein + sustained energy*
+
+---
+
+## **EVENING SNACK (9:00 PM)** | 220 cal | 12g protein
+- **Cottage cheese** (150g, low-fat, 1% milkfat)
+- **Whole grain bread** (1 slice/30g)
+- **Sliced turkey** (60g, deli meat, no peanut derivatives)
+- **Apple** (120g)
+
+*Why: Casein protein for overnight recovery*
+
+---
+
+## **DAILY TOTALS**
+- **Calories:** ~3,050
+- **Protein:** 129g (16.9% of intake)
+- **Carbs:** 435g (57% of intake)
+- **Fat:** 72g (21.2% of intake)
+- **Fiber:** 38g+
+
+---
+
+## **HYDRATION PROTOCOL**
+- **6:00-8:30 AM:** 500ml water before + during training
+- **8:30 AM-12:30 PM:** 750ml water (post-training recovery)
+- **12:30-3:30 PM:** 500ml water with lunch/snack
+- **3:30-7:00 PM:** 500ml water + electrolyte drink (if second training session)
+- **7:00 PM onwards:** 300-400ml herbal tea
+- **Total:** 3-3.5L daily
+
+---
+
+## **CRITICAL PEANUT ALLERGY SAFETY NOTES**
+✓ **All products verified peanut-free** (check labels for "may contain traces")  
+✓ **Sunflower seed butter** & **almond butter** = safe alternatives  
+✓ **Granola selected** = explicitly peanut-free brands only  
+✓ **Cross-contamination risk:** Use separate utensils, cutting boards  
+✓ **Restaurant/catering:** Always inform of severe allergy  
+✓ **Backup:** Carry EpiPen during all training sessions  
+
+---
+
+## **TRAINING-SPECIFIC ADJUSTMENTS**
+- **Early morning matches:** Add extra banana (30g) to breakfast
+- **Doubles training:** Increase afternoon snack carbs by 50g
+- **Hot weather days:** Add 500ml coconut water to hydration
+- **Recovery days:** Reduce overall calories by 200-250 cal, increase protein slightly</pre></td>
+                        <td class="score-col"><div class="score-badge s-excellent">9</div></td>
+                        <td class="reasoning">The solution fully satisfies all three mandatory requirements with precision: daily totals are clearly stated, macronutrient breakdown is provided with percentages, and every meal includes exact foods, portions (in grams), and specific times. All secondary criteria are met—peanut allergy is comprehensively addressed with safe alternatives and safety protocols, early morning training is explicitly supported with high-glycemic breakfast and strategic snack timing, and the core meal plan is logically organized. The primary limitation is that the solution's comprehensiveness, while thorough and professional, somewhat contradicts the 'compact and concise' criterion by including extensive supplementary guidance. However, the core meal plan itself remains scannable and practical. The solution demonstrates strong nutritional knowledge and athlete-specific planning.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+</body>
+</html>
