@@ -3,6 +3,7 @@ from typing import Callable
 
 from anthropic import Anthropic
 from anthropic.types import (
+    CacheControlEphemeralParam,
     ContentBlockParam,
     Message,
     MessageParam,
@@ -63,11 +64,21 @@ def chat(
     }
 
     if system:
-        params["system"] = system
+        params["system"] = [
+            {
+                "type": "text",
+                "text": system,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ]
     if stop_sequences:
         params["stop_sequences"] = stop_sequences
     if tools:
-        params["tools"] = tools
+        tools_clone = tools.copy()
+        last_tool = tools_clone[-1].copy()
+        last_tool["cache_control"] = CacheControlEphemeralParam({"type": "ephemeral"})
+        tools_clone[-1] = last_tool
+        params["tools"] = tools_clone
     if tool_choice:
         params["tool_choice"] = tool_choice
     if thinking:
