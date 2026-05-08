@@ -74,11 +74,11 @@ messages = add_user_message(
         {
             "type": "text",
             "text": """
-Run a detailed analysis to determine major drivers of churn.
-Your final output should include at least one detailed plot summarizing your findings.
+            Run a detailed analysis to determine major drivers of churn.
+            Your final output should include at least one detailed plot summarizing your findings.
 
-Critical note: Every time you execute code, you're starting with a completely clean slate. 
-No variables or library imports from previous executions exist. You need to redeclare/reimport all variables/libraries.
+            Critical note: Every time you execute code, you're starting with a completely clean slate. 
+            No variables or library imports from previous executions exist. You need to redeclare/reimport all variables/libraries.
             """,
         },
         {"type": "container_upload", "file_id": file_metadata.id},
