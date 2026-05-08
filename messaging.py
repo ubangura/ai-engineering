@@ -3,6 +3,7 @@ from typing import Callable
 
 from anthropic import Anthropic
 from anthropic.types import (
+    ContentBlockParam,
     Message,
     MessageParam,
     ToolChoiceParam,
@@ -16,7 +17,7 @@ client = Anthropic()
 
 
 def add_user_message(
-    messages: list[MessageParam], message: Message | str | list[ToolResultBlockParam]
+    messages: list[MessageParam], message: Message | str | list[ContentBlockParam]
 ) -> list[MessageParam]:
     """Append a user turn to messages and return the list."""
     user_message: MessageParam = {
