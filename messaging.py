@@ -1,4 +1,5 @@
 import json
+from collections.abc import Sequence
 from typing import Callable
 
 from anthropic import Anthropic
@@ -18,7 +19,7 @@ client = Anthropic()
 
 
 def add_user_message(
-    messages: list[MessageParam], message: Message | str | list[ContentBlockParam]
+    messages: list[MessageParam], message: Message | str | Sequence[ContentBlockParam]
 ) -> list[MessageParam]:
     """Append a user turn to messages and return the list."""
     user_message: MessageParam = {
