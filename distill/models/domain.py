@@ -25,6 +25,14 @@ class VideoMetadata(BaseModel):
     )
 
 
+class TranscriptSegment(BaseModel):
+    """A timestamped chunk of transcript text from a speech-to-text source."""
+
+    start: float = Field(ge=0.0, description="Start time in seconds")
+    end: float = Field(ge=0.0, description="End time in seconds")
+    text: str = Field(description="Spoken text in this segment")
+
+
 class OutlineNode(BaseModel):
     """A single node in the hierarchical outline tree."""
 
