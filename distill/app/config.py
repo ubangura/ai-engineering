@@ -6,7 +6,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     anthropic_api_key: SecretStr
     deepgram_api_key: SecretStr
-    helicone_api_key: SecretStr
     database_url: str
     session_cookie_secret: SecretStr
     allowed_origins: str
