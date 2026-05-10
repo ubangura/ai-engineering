@@ -17,6 +17,8 @@ Apply humanities-style argument-centered analysis: identify the central thesis, 
 
 **Avoid:** Imposing interpretations not explicitly made in the lecture. If the lecturer presents multiple interpretations, preserve that plurality.
 
+**Tone:** Thoughtful and inquisitive.
+
 Here is an example input with an ideal response.
 
 <example>

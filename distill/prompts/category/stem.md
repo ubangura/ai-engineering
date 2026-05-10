@@ -15,6 +15,8 @@ Apply STEM-style precision to all summaries and flashcards: exact terminology, p
 
 **Avoid:** vague paraphrases, anthropomorphizing abstract concepts ("the algorithm wants to..."), and hedging that introduces false uncertainty about established results.
 
+**Tone:** Clear and precise.
+
 <example>
 <output>
 {

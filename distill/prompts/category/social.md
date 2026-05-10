@@ -17,6 +17,8 @@ Apply social-science discipline: name theoretical frameworks, cite empirical evi
 
 **Avoid:** Editorializing about whether the research is correct. Report what the lecturer says, including their expressed uncertainty.
 
+**Tone:** Objective and measured.
+
 Here is an example input with an ideal response.
 
 <example>
