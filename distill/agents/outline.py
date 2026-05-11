@@ -39,7 +39,11 @@ async def run_outline(
             video_id=video_id,
         )
         try:
-            outline = Outline.model_validate(json.loads(raw))
+            data = json.loads(raw)
+            if "outline" in data and "nodes" not in data:
+                data["nodes"] = data.pop("outline")
+            data.setdefault("video_id", video_id)
+            outline = Outline.model_validate(data)
         except Exception as exc:
             last_exc = exc
             continue
