@@ -4,7 +4,7 @@ from typing import Annotated
 
 from agents.outline import run_outline
 from agents.study_pack import run_study_pack
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from models.domain import Flashcard, Outline, StudyPack, Summary
 from models.requests.video import VideoIngestRequest
@@ -58,6 +58,7 @@ async def health():
 async def submit_video(
     body: VideoIngestRequest,
     request: Request,
+    response: Response,
     session: Annotated[Session, Depends(get_session)],
 ) -> VideoIngestResponse | VideoStudyPackResponse:
     try:
@@ -94,12 +95,14 @@ async def submit_video(
                 metadata_=metadata.model_dump(),
             )
         )
+        # flush now so the Video row exists before the FK-dependent Job insert
+        session.flush()
 
-    job = orm.Job(video_id=video_id)
-    session.add(job)
-    job_id = str(job.job_id)
+    job_id = str(uuid.uuid4())
+    session.add(orm.Job(job_id=uuid.UUID(job_id), video_id=video_id))
     session.commit()
 
+    response.status_code = 202
     return VideoIngestResponse(job_id=job_id, video_id=video_id)
 
 
