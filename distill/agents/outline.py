@@ -31,7 +31,7 @@ async def run_outline(
     for _ in range(_MAX_ATTEMPTS):
         raw = await complete(
             model=_MODEL,
-            max_tokens=2000,
+            max_tokens=9000,
             system_prompt=_load_system_prompt(),
             transcript=timestamped_transcript,
             instruction=instruction,

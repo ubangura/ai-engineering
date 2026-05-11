@@ -85,7 +85,7 @@ class Citation(BaseModel):
     start_ts: float = Field(ge=0.0, description="Start timestamp in seconds")
     end_ts: float = Field(ge=0.0, description="End timestamp in seconds")
     quote: str = Field(
-        max_length=200, description="Verbatim transcript excerpt, at most 25 words"
+        max_length=500, description="Verbatim transcript excerpt, at most 25 words"
     )
 
 
