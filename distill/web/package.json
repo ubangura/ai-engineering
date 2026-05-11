@@ -1,0 +1,39 @@
+{
+  "name": "distill-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@radix-ui/react-select": "^2",
+    "@radix-ui/react-tabs": "^1",
+    "@radix-ui/react-toast": "^1",
+    "class-variance-authority": "^0.7",
+    "clsx": "^2",
+    "framer-motion": "^11",
+    "lucide-react": "^0.400.0",
+    "next": "14.2.5",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-markdown": "^9",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4",
+    "remark-math": "^6.0.0",
+    "tailwind-merge": "^2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.5",
+    "postcss": "^8",
+    "tailwindcss": "^3",
+    "typescript": "^5"
+  }
+}

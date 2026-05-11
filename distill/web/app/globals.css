@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f5efe4;
+  --foreground: #1c1410;
+  --surface: #ede5d8;
+  --surface-alt: #e8ddd0;
+  --border: #d4c4a8;
+  --text: #1c1410;
+  --text-muted: #6b5c47;
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --accent-light: #fef3c7;
+  --card: #ede5d8;
+  --card-foreground: #1c1410;
+  --popover: #ede5d8;
+  --popover-foreground: #1c1410;
+  --primary: #b45309;
+  --primary-foreground: #ffffff;
+  --secondary: #ede5d8;
+  --secondary-foreground: #1c1410;
+  --muted: #e8ddd0;
+  --muted-foreground: #6b5c47;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --input: #ede5d8;
+  --ring: #d97706;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
