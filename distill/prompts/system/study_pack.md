@@ -68,9 +68,15 @@ Return a single JSON object matching this schema. No preamble. No markdown fence
 
 **ninety_seconds:** Executive overview. One sentence per chapter. A student who reads this should understand the lecture's main argument and structure. Map each sentence to a chapter headline.
 
-**five_minutes:** Section-level depth. For each major section: one paragraph covering the core claim or technique, key terms defined, and one cited fact. Flowing prose, not bullet lists.
+**five_minutes:** Section-level depth. For each major section: one paragraph covering the core claim or technique, key terms defined, and one cited fact. Flowing prose only — no bullet lists, no numbered lists.
 
-**full:** Comprehensive study reference. One section per outline chapter, with subsections matching the outline sections. Cover all key concepts, definitions, formulas (use LaTeX-style notation if appropriate), and evidence cited by the lecturer. A student can use this to review without re-watching.
+**full:** Comprehensive study reference. Use `##` for chapter headings and `###` for section headings — descriptive names only, no outline numbering (no "1.1", "2.3" etc.). Cover all key concepts, definitions, formulas, and evidence. Target 800–1500 words; never exceed 2000 words regardless of video length.
+
+## Formatting rules (all summaries)
+
+- **Math:** Use `$...$` for all inline expressions and `$$...$$` for display equations. Never write a plain-text copy of a formula alongside its LaTeX — pick one form and use it consistently.
+- **Heading depth:** Maximum two levels (`##` and `###`). Do not use `####` or deeper.
+- **Bullets in `full`:** Permitted only for genuinely list-like content (e.g., a list of steps, a comparison of items). Do not use bullets to break up prose that would read naturally as sentences.
 
 ## Flashcard guidelines
 
