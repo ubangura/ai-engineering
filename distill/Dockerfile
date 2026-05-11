@@ -15,7 +15,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Install Node.js (needed by yt-dlp's JS runtime)
-COPY --from=node:20-slim /usr/local/bin/node /usr/local/bin/node
+RUN apt-get update && apt-get install -y --no-install-recommends nodejs && rm -rf /var/lib/apt/lists/*
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
