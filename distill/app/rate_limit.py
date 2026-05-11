@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from models.domain import ErrorResponse
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.db.models import RateLimit
@@ -23,26 +24,23 @@ def _window_start() -> datetime:
     return now.replace(minute=0, second=0, microsecond=0)
 
 
-def check_and_increment(
-    session: Session,
-    bucket: str,
-    scope: str,
-) -> None:
+def check_and_increment(session: Session, bucket: str, scope: str) -> None:
     window = _window_start()
     limit = _LIMITS[bucket]
 
-    row = (
-        session.query(RateLimit)
-        .filter_by(scope=scope, bucket=bucket, window_start=window)
-        .with_for_update()
-        .first()
+    stmt = (
+        pg_insert(RateLimit)
+        .values(scope=scope, bucket=bucket, window_start=window, count=1)
+        .on_conflict_do_update(
+            index_elements=["scope", "bucket", "window_start"],
+            set_={"count": RateLimit.count + 1},
+        )
+        .returning(RateLimit.count)
     )
+    new_count = session.execute(stmt).scalar_one()
 
-    if row is None:
-        row = RateLimit(scope=scope, bucket=bucket, window_start=window, count=0)
-        session.add(row)
-
-    if row.count >= limit:
+    if new_count > limit:
+        session.rollback()
         raise RateLimitExceeded(
             ErrorResponse(
                 code="rate_limited",
@@ -50,7 +48,6 @@ def check_and_increment(
             )
         )
 
-    row.count += 1
     session.commit()
 
 
@@ -65,7 +62,5 @@ def _rate_limit_message(bucket: str, limit: int) -> str:
 
 def _time_of_reset() -> str:
     now = datetime.now(timezone.utc)
-    next_hour = now.replace(minute=0, second=0, microsecond=0)
-
-    next_hour += timedelta(hours=1)
+    next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
     return next_hour.strftime("%H:%M:%S")
