@@ -16,7 +16,10 @@ _AGENT_NAME = "qa"
 
 logger = logging.getLogger(__name__)
 
+# Matches [MM:SS] e.g. [1:23]
 _INLINE_TIMESTAMP_RE = re.compile(r"\[(\d{1,2}):(\d{2})\]")
+# Matches VTT-style [S:mmm-S:mmm] e.g. [35:667-38:480]
+_VTT_RANGE_RE = re.compile(r"\[(\d+):(\d{3})-\d+:\d{3}\]")
 _VTT_TIMESTAMP_RE = re.compile(
     r"(\d{2}):(\d{2}):(\d{2})\.\d{3} --> (\d{2}):(\d{2}):(\d{2})\.\d{3}"
 )
@@ -91,7 +94,7 @@ async def run_qa(
     citations = _extract_citations_from_text(answer_text, timestamped_transcript)
 
     for citation in citations:
-        yield sse_event("citation", citation.model_dump())
+        yield sse_event("citation", {"citation": citation.model_dump()})
 
     yield sse_event(
         "done",
@@ -146,8 +149,14 @@ def _extract_citations_from_text(
 ) -> list[Citation]:
     seen: set[int] = set()
     citations: list[Citation] = []
+
+    candidates: list[int] = []
     for match in _INLINE_TIMESTAMP_RE.finditer(text):
-        start_seconds = int(match.group(1)) * 60 + int(match.group(2))
+        candidates.append(int(match.group(1)) * 60 + int(match.group(2)))
+    for match in _VTT_RANGE_RE.finditer(text):
+        candidates.append(int(match.group(1)))
+
+    for start_seconds in candidates:
         if start_seconds in seen:
             continue
         seen.add(start_seconds)
