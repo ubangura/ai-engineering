@@ -6,6 +6,7 @@ import time
 from collections.abc import AsyncGenerator
 
 import anthropic
+from anthropic.types import ToolUnionParam
 from app.clients.anthropic import get_anthropic_client
 from app.sse import sse_event
 from models.domain import Citation, QAResponse
@@ -43,7 +44,6 @@ async def run_qa(
     messages = _build_messages(transcript, history, question, language_note)
 
     answer_parts: list[str] = []
-    used_web_search = False
     start = time.monotonic()
 
     async with client.messages.stream(
@@ -61,7 +61,10 @@ async def run_qa(
     ) as stream:
         async for event in stream:
             if hasattr(event, "type"):
-                if event.type == "content_block_delta" and hasattr(event.delta, "text"):
+                if (
+                    event.type == "content_block_delta"
+                    and event.delta.type == "text_delta"
+                ):
                     chunk = event.delta.text
                     answer_parts.append(chunk)
                     yield sse_event("delta", {"text": chunk})
@@ -71,10 +74,7 @@ async def run_qa(
                         and event.content_block.type == "tool_use"
                         and event.content_block.name == "web_search"
                     ):
-                        used_web_search = True
-                        yield sse_event(
-                            "tool-use", {"tool": "web_search", "query": ""}
-                        )
+                        yield sse_event("tool-use", {"tool": "web_search", "query": ""})
 
         final_message = await stream.get_final_message()
 
@@ -102,7 +102,6 @@ async def run_qa(
         QAResponse(
             answer=answer_text,
             citations=citations,
-            used_web_search=used_web_search,
             web_sources=[],
         ).model_dump(),
     )
@@ -118,8 +117,15 @@ def _build_messages(
         {
             "role": "user",
             "content": [
-                {"type": "text", "text": transcript, "cache_control": {"type": "ephemeral"}},
-                {"type": "text", "text": "The above is the lecture transcript. Answer questions using it."},
+                {
+                    "type": "text",
+                    "text": transcript,
+                    "cache_control": {"type": "ephemeral"},
+                },
+                {
+                    "type": "text",
+                    "text": "The above is the lecture transcript. Answer questions using it.",
+                },
             ],
         },
         {
@@ -143,12 +149,14 @@ def _extract_citations_from_text(text: str, transcript: str) -> list[Citation]:
         if start_seconds in seen:
             continue
         seen.add(start_seconds)
-        citations.append(Citation(
-            section_id="",
-            start_ts=float(start_seconds),
-            end_ts=float(start_seconds + 10),
-            quote=_find_quote_near(transcript, float(start_seconds)),
-        ))
+        citations.append(
+            Citation(
+                section_id="",
+                start_ts=float(start_seconds),
+                end_ts=float(start_seconds + 10),
+                quote=_find_quote_near(transcript, float(start_seconds)),
+            )
+        )
     return citations
 
 
