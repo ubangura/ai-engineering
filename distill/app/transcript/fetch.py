@@ -67,7 +67,7 @@ def _fetch_youtube_transcript(video_id: str) -> list[dict]:
 
 
 async def _try_deepgram(video_url: str) -> TranscriptResult:
-    audio_url = _youtube_to_audio_url(video_url)
+    audio_url = await _youtube_to_audio_url(video_url)
     response = await dg_client.transcribe(audio_url)
     confidence = dg_client.mean_confidence(response)
     if confidence and confidence < _MIN_DEEPGRAM_CONFIDENCE:
@@ -87,7 +87,12 @@ async def _try_deepgram(video_url: str) -> TranscriptResult:
     )
 
 
-def _youtube_to_audio_url(video_url: str) -> str:
+async def _youtube_to_audio_url(video_url: str) -> str:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _extract_audio_url_sync, video_url)
+
+
+def _extract_audio_url_sync(video_url: str) -> str:
     import yt_dlp
 
     ydl_opts = {
@@ -123,5 +128,5 @@ def _segments_to_vtt(segments: list[TranscriptSegment]) -> str:
 def _seconds_to_vtt_time(seconds: float) -> str:
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
-    remaining_seconds = seconds % 60
+    remaining_seconds = min(seconds % 60, 59.999)
     return f"{hours:02d}:{minutes:02d}:{remaining_seconds:06.3f}"

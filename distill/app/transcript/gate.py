@@ -136,10 +136,19 @@ def _validate(video_id: str, info: dict) -> VideoMetadata:
             )
         )
 
+    duration = int(info.get("duration") or 0)
+    if duration <= 0:
+        raise GateRejection(
+            ErrorResponse(
+                code="internal_error",
+                detail="Couldn't determine video duration.",
+            )
+        )
+
     return VideoMetadata(
         video_id=video_id,
         title=info.get("title", ""),
-        duration_seconds=int(info.get("duration") or 0),
+        duration_seconds=duration,
         uploader=info.get("uploader", ""),
         is_live=is_live,
         was_live=bool(info.get("was_live")),
@@ -161,4 +170,4 @@ def _normalize_availability(
         "subscriber_only": "needs_auth",
         "": "public",
     }
-    return mapping.get(raw, "public")
+    return mapping.get(raw, "needs_auth")
