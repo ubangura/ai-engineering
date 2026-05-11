@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 from models.domain import ErrorResponse
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -24,7 +25,9 @@ def _window_start() -> datetime:
     return now.replace(minute=0, second=0, microsecond=0)
 
 
-def check_and_increment(session: Session, bucket: str, scope: str) -> None:
+def check_and_increment(
+    session: Session, bucket: Literal["video", "qa", "translate"], scope: str
+) -> None:
     window = _window_start()
     limit = _LIMITS[bucket]
 

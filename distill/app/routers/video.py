@@ -1,0 +1,265 @@
+import logging
+import uuid
+from typing import Annotated
+
+from agents.outline import run_outline
+from agents.study_pack import run_study_pack
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
+from models.domain import Flashcard, Outline, StudyPack, Summary
+from models.requests.video import VideoIngestRequest
+from models.responses.video import VideoIngestResponse, VideoStudyPackResponse
+from sqlalchemy.orm import Session
+
+from app.db import SessionLocal, get_session
+from app.db import models as orm
+from app.rate_limit import RateLimitExceeded, check_and_increment
+from app.sessions import get_session_id
+from app.sse import keepalive_stream, sse_event
+from app.transcript.fetch import fetch_transcript
+from app.transcript.gate import GateRejection, run_gate
+
+router = APIRouter()
+sse_router = APIRouter()
+logger = logging.getLogger(__name__)
+
+_MAX_TEMPERATURE = 0.7
+
+
+def _youtube_url(video_id: str) -> str:
+    return f"https://www.youtube.com/watch?v={video_id}"
+
+
+def _study_pack_from_db(pack_row: orm.StudyPack, outline: Outline) -> StudyPack:
+    return StudyPack(
+        video_id=pack_row.video_id,
+        outline=outline,
+        summaries=[Summary(**summary) for summary in pack_row.summaries],
+        flashcards=[Flashcard(**flashcard) for flashcard in pack_row.flashcards],
+    )
+
+
+def _update_job_status(job_id: str, status: str, error_code: str | None = None) -> None:
+    with SessionLocal() as session:
+        job = session.get(orm.Job, uuid.UUID(job_id))
+        if job:
+            job.status = status
+            if error_code is not None:
+                job.error_code = error_code
+            session.commit()
+
+
+@router.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
+
+@router.post("/api/video")
+async def submit_video(
+    body: VideoIngestRequest,
+    request: Request,
+    session: Annotated[Session, Depends(get_session)],
+) -> VideoIngestResponse | VideoStudyPackResponse:
+    try:
+        metadata = await run_gate(str(body.url))
+    except GateRejection as exc:
+        raise HTTPException(status_code=422, detail=exc.error.model_dump())
+
+    video_id = metadata.video_id
+
+    pack_row = session.get(orm.StudyPack, video_id)
+    if pack_row is not None:
+        outline_row = session.get(orm.Outline, video_id)
+        if outline_row is None:
+            raise HTTPException(
+                status_code=500, detail="Outline missing for persisted video"
+            )
+        outline = Outline.model_validate(outline_row.outline)
+        study_pack = _study_pack_from_db(pack_row, outline)
+        return VideoStudyPackResponse(video_id=video_id, study_pack=study_pack)
+
+    scope = f"cookie:{get_session_id(request)}"
+    try:
+        check_and_increment(session, "video", scope)
+    except RateLimitExceeded as exc:
+        raise HTTPException(status_code=429, detail=exc.error.model_dump())
+
+    if session.get(orm.Video, video_id) is None:
+        session.add(
+            orm.Video(
+                video_id=video_id,
+                title=metadata.title,
+                duration_seconds=metadata.duration_seconds,
+                uploader=metadata.uploader,
+                metadata_=metadata.model_dump(),
+            )
+        )
+
+    job = orm.Job(video_id=video_id)
+    session.add(job)
+    job_id = str(job.job_id)
+    session.commit()
+
+    return VideoIngestResponse(job_id=job_id, video_id=video_id)
+
+
+@router.get("/api/video/{video_id}")
+async def get_video(
+    video_id: str,
+    session: Annotated[Session, Depends(get_session)],
+):
+    pack_row = session.get(orm.StudyPack, video_id)
+    outline_row = session.get(orm.Outline, video_id)
+    if pack_row is None or outline_row is None:
+        raise HTTPException(status_code=404, detail="Video not found")
+    outline = Outline.model_validate(outline_row.outline)
+    study_pack = _study_pack_from_db(pack_row, outline)
+    return VideoStudyPackResponse(video_id=video_id, study_pack=study_pack)
+
+
+@sse_router.get("/sse/video/{job_id}")
+async def sse_video(job_id: str):
+    return StreamingResponse(
+        keepalive_stream(_pipeline_stream(job_id)),
+        media_type="text/event-stream",
+    )
+
+
+async def _pipeline_stream(job_id: str):
+    with SessionLocal() as session:
+        job = session.get(orm.Job, uuid.UUID(job_id))
+        if job is None:
+            yield sse_event("error", {"code": "not_found", "detail": "Job not found"})
+            return
+        video_id = job.video_id
+        status = job.status
+
+    if status == "done":
+        with SessionLocal() as session:
+            pack_row = session.get(orm.StudyPack, video_id)
+            outline_row = session.get(orm.Outline, video_id)
+        if pack_row and outline_row:
+            outline = Outline.model_validate(outline_row.outline)
+            study_pack = _study_pack_from_db(pack_row, outline)
+            yield sse_event("study-pack-done", {"study_pack": study_pack.model_dump()})
+        yield sse_event("done", {"video_id": video_id})
+        return
+
+    if status == "error":
+        with SessionLocal() as session:
+            job = session.get(orm.Job, uuid.UUID(job_id))
+            code = (job.error_code or "internal_error") if job else "internal_error"
+        yield sse_event("error", {"code": code, "detail": "Processing failed"})
+        return
+
+    _update_job_status(job_id, "running")
+
+    try:
+        with SessionLocal() as session:
+            video_row = session.get(orm.Video, video_id)
+            title = video_row.title if video_row else ""
+            duration = video_row.duration_seconds if video_row else 0
+            categories = video_row.metadata_.get("categories", []) if video_row else []
+
+        yield sse_event(
+            "metadata-gate-pass",
+            {
+                "title": title,
+                "duration": duration,
+                "category": categories[0] if categories else None,
+            },
+        )
+
+        with SessionLocal() as session:
+            transcript_row = session.get(orm.Transcript, video_id)
+
+        if transcript_row is None:
+            result = await fetch_transcript(video_id, _youtube_url(video_id))
+            with SessionLocal() as session:
+                session.add(
+                    orm.Transcript(
+                        video_id=video_id,
+                        source=result.source,
+                        vtt_text=result.vtt_text,
+                        segments=[segment.model_dump() for segment in result.segments],
+                        mean_confidence=result.mean_confidence,
+                    )
+                )
+                session.commit()
+            yield sse_event("transcript-source", {"source": result.source})
+            yield sse_event(
+                "transcript-fetched",
+                {
+                    "segment_count": len(result.segments),
+                    "mean_confidence": result.mean_confidence,
+                },
+            )
+            vtt_text = result.vtt_text
+        else:
+            vtt_text = transcript_row.vtt_text
+
+        with SessionLocal() as session:
+            outline_row = session.get(orm.Outline, video_id)
+
+        if outline_row is None:
+            outline = await run_outline(vtt_text, video_id, job_id)
+            with SessionLocal() as session:
+                session.add(
+                    orm.Outline(
+                        video_id=video_id,
+                        outline=outline.model_dump(),
+                        category=outline.inferred_category,
+                        recommended_temperature=outline.recommended_temperature,
+                        is_lecture_confidence=outline.is_lecture_confidence,
+                    )
+                )
+                session.commit()
+        else:
+            outline = Outline.model_validate(outline_row.outline)
+
+        yield sse_event("outline-done", {"outline": outline.model_dump()})
+
+        with SessionLocal() as session:
+            pack_row = session.get(orm.StudyPack, video_id)
+
+        if pack_row is None:
+            study_pack = await run_study_pack(vtt_text, outline, video_id, job_id)
+            generation_temperature = min(
+                max(outline.recommended_temperature, 0.0), _MAX_TEMPERATURE
+            )
+            with SessionLocal() as session:
+                session.add(
+                    orm.StudyPack(
+                        video_id=video_id,
+                        summaries=[
+                            summary.model_dump() for summary in study_pack.summaries
+                        ],
+                        flashcards=[
+                            flashcard.model_dump()
+                            for flashcard in study_pack.flashcards
+                        ],
+                        generation_temperature=generation_temperature,
+                    )
+                )
+                session.commit()
+        else:
+            study_pack = _study_pack_from_db(pack_row, outline)
+
+        yield sse_event("study-pack-done", {"study_pack": study_pack.model_dump()})
+
+        _update_job_status(job_id, "done")
+        yield sse_event("done", {"video_id": video_id})
+
+    except GateRejection as exc:
+        yield sse_event("error", exc.error.model_dump())
+        _update_job_status(job_id, "error", exc.error.code)
+
+    except Exception:
+        logger.exception(
+            "pipeline_error", extra={"job_id": job_id, "video_id": video_id}
+        )
+        yield sse_event(
+            "error",
+            {"code": "internal_error", "detail": "An unexpected error occurred"},
+        )
+        _update_job_status(job_id, "error", "internal_error")

@@ -31,7 +31,7 @@ def _load_system_prompt() -> str:
 
 async def run_qa(
     timestamped_transcript: str,
-    history: list[dict],
+    history: list[MessageParam],
     question: str,
     video_id: str,
     session_id: str,
@@ -105,7 +105,7 @@ async def run_qa(
 
 def _build_messages(
     timestamped_transcript: str,
-    history: list[dict],
+    history: list[MessageParam],
     question: str,
     response_language: str | None,
 ) -> list[MessageParam]:
