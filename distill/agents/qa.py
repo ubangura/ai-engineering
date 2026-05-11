@@ -82,6 +82,8 @@ async def run_qa(
             "latency_ms": round((time.monotonic() - start) * 1000),
             "input_tokens": final_message.usage.input_tokens,
             "output_tokens": final_message.usage.output_tokens,
+            "cache_creation_input_tokens": final_message.usage.cache_creation_input_tokens,
+            "cache_read_input_tokens": final_message.usage.cache_read_input_tokens,
         },
     )
 

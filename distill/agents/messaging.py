@@ -1,6 +1,7 @@
 import logging
 import time
 
+from anthropic.types import Message
 from app.clients.anthropic import get_anthropic_client
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ async def complete(
     if temperature is not None:
         params["temperature"] = temperature
 
-    response = await _client.messages.create(**params)
+    response: Message = await _client.messages.create(**params)
 
     logger.info(
         "anthropic_call",
@@ -58,6 +59,8 @@ async def complete(
             "latency_ms": round((time.monotonic() - start) * 1000),
             "input_tokens": response.usage.input_tokens,
             "output_tokens": response.usage.output_tokens,
+            "cache_creation_input_tokens": response.usage.cache_creation_input_tokens,
+            "cache_read_input_tokens": response.usage.cache_read_input_tokens,
         },
     )
 
