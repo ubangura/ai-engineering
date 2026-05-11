@@ -21,7 +21,9 @@ def get_session_id(request: Request) -> str:
     raw = request.cookies.get(_COOKIE_NAME)
     if raw:
         try:
-            return _signer.unsign(raw, max_age=int(_COOKIE_MAX_AGE.total_seconds())).decode()
+            return _signer.unsign(
+                raw, max_age=int(_COOKIE_MAX_AGE.total_seconds())
+            ).decode()
         except BadSignature:
             pass
     return _mint_session_id()
