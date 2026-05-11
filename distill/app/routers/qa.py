@@ -32,7 +32,10 @@ async def ask_question(
     try:
         check_and_increment(session, "qa", scope)
     except RateLimitExceeded as exc:
-        raise HTTPException(status_code=429, detail=exc.error.model_dump())
+        raise HTTPException(
+            status_code=429,
+            detail={**exc.error.model_dump(), "retry_after_seconds": exc.retry_after_seconds},
+        )
 
     qa_row = session.get(orm.QASession, (body.video_id, session_id))
     history = _turns_to_history(qa_row.turns if qa_row else [])

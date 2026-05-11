@@ -83,7 +83,10 @@ async def submit_video(
     try:
         check_and_increment(session, "video", scope)
     except RateLimitExceeded as exc:
-        raise HTTPException(status_code=429, detail=exc.error.model_dump())
+        raise HTTPException(
+            status_code=429,
+            detail={**exc.error.model_dump(), "retry_after_seconds": exc.retry_after_seconds},
+        )
 
     if session.get(orm.Video, video_id) is None:
         session.add(

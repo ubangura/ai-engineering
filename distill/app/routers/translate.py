@@ -42,7 +42,10 @@ async def translate(
     try:
         check_and_increment(session, "translate", scope)
     except RateLimitExceeded as exc:
-        raise HTTPException(status_code=429, detail=exc.error.model_dump())
+        raise HTTPException(
+            status_code=429,
+            detail={**exc.error.model_dump(), "retry_after_seconds": exc.retry_after_seconds},
+        )
 
     summaries = [Summary(**summary) for summary in pack_row.summaries]
     flashcards = [Flashcard(**flashcard) for flashcard in pack_row.flashcards]

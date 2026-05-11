@@ -15,8 +15,9 @@ _LIMITS = {
 
 
 class RateLimitExceeded(Exception):
-    def __init__(self, error: ErrorResponse):
+    def __init__(self, error: ErrorResponse, retry_after_seconds: int):
         self.error = error
+        self.retry_after_seconds = retry_after_seconds
         super().__init__(error.code)
 
 
@@ -44,11 +45,13 @@ def check_and_increment(
 
     if new_count > limit:
         session.rollback()
+        retry_after = _seconds_until_reset()
         raise RateLimitExceeded(
             ErrorResponse(
                 code="rate_limited",
                 detail=_rate_limit_message(bucket, limit),
-            )
+            ),
+            retry_after_seconds=retry_after,
         )
 
     session.commit()
@@ -61,6 +64,12 @@ def _rate_limit_message(bucket: str, limit: int) -> str:
         "translate": f"Up to {limit} language translations per video are supported.",
     }
     return messages.get(bucket, "Rate limit reached. Please try again later.")
+
+
+def _seconds_until_reset() -> int:
+    now = datetime.now(timezone.utc)
+    next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    return int((next_hour - now).total_seconds())
 
 
 def _time_of_reset() -> str:
