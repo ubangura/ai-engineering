@@ -118,7 +118,10 @@ class QASession(Base):
     session_id: Mapped[str] = mapped_column(Text, primary_key=True)
     turns: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()"), onupdate=_now
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+        onupdate=_now,
     )
 
 
@@ -156,5 +159,8 @@ class Job(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()"), onupdate=_now
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+        onupdate=_now,
     )
