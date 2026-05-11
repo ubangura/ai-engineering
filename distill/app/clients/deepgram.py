@@ -32,7 +32,7 @@ def mean_confidence(response: dict) -> float | None:
         if not words:
             return None
         return sum(word["confidence"] for word in words) / len(words)
-    except (KeyError, IndexError, ZeroDivisionError):
+    except (KeyError, IndexError):
         return None
 
 

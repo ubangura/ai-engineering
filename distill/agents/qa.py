@@ -57,7 +57,7 @@ async def run_qa(
             }
         ],
         messages=messages,
-        tools=[WEB_SEARCH_TOOL],
+        tools=[WEB_SEARCH_TOOL],  # type: ignore[arg-type]
     ) as stream:
         async for event in stream:
             if hasattr(event, "type"):
@@ -103,7 +103,7 @@ async def run_qa(
             answer=answer_text,
             citations=citations,
             used_web_search=used_web_search,
-            web_sources=None,
+            web_sources=[],
         ).model_dump(),
     )
 
@@ -136,18 +136,18 @@ def _build_messages(
 
 
 def _extract_citations_from_text(text: str, transcript: str) -> list[Citation]:
-    seen: set[float] = set()
+    seen: set[int] = set()
     citations = []
     for match in _INLINE_TIMESTAMP_RE.finditer(text):
-        start_ts = float(int(match.group(1)) * 60 + int(match.group(2)))
-        if start_ts in seen:
+        start_seconds = int(match.group(1)) * 60 + int(match.group(2))
+        if start_seconds in seen:
             continue
-        seen.add(start_ts)
+        seen.add(start_seconds)
         citations.append(Citation(
             section_id="",
-            start_ts=start_ts,
-            end_ts=start_ts + 10.0,
-            quote=_find_quote_near(transcript, start_ts),
+            start_ts=float(start_seconds),
+            end_ts=float(start_seconds + 10),
+            quote=_find_quote_near(transcript, float(start_seconds)),
         ))
     return citations
 
