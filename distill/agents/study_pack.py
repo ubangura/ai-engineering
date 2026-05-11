@@ -58,7 +58,10 @@ async def run_study_pack(
             temperature=temperature,
         )
         try:
-            return StudyPack.model_validate(json.loads(raw))
+            data = json.loads(raw)
+            data["video_id"] = video_id
+            data["outline"] = outline.model_dump()
+            return StudyPack.model_validate(data)
         except Exception as exc:
             if attempt == _MAX_ATTEMPTS - 1:
                 raise RuntimeError(

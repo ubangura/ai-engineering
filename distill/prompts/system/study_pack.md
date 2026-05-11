@@ -7,7 +7,7 @@ Generate three summaries (90-second, 5-minute, full) and 8–20 timestamped flas
 
 **Ground truth:** Every claim in a summary or flashcard must be supportable from the transcript. If the transcript does not contain evidence for a claim, omit it. Do not hallucinate.
 
-**Citations:** Every flashcard must have at least one citation with `start_ts`, `end_ts` (both in seconds), and a verbatim `quote` of ≤25 words from the transcript.
+**Citations:** Every flashcard must have at least one citation with `section_id` (same OutlineNode.id as the parent flashcard), `start_ts`, `end_ts` (both in seconds), and a verbatim `quote` of ≤25 words from the transcript.
 
 **Scale to video length:** Use the outline's section count and the transcript length to calibrate:
 - Short videos (≤15 min): 8 flashcards, `ninety_seconds` ≤ 120 words, `five_minutes` ≤ 300 words
@@ -45,6 +45,7 @@ Return a single JSON object matching this schema. No preamble. No markdown fence
       "section_id": "<OutlineNode.id this card belongs to>",
       "citations": [
         {
+          "section_id": "<OutlineNode.id this citation falls within>",
           "start_ts": <float seconds>,
           "end_ts": <float seconds>,
           "quote": "<verbatim transcript excerpt ≤25 words>"
@@ -92,7 +93,7 @@ Here is an example input with an ideal response.
   "question": "Where is light energy captured during photosynthesis?",
   "answer": "Light energy is captured by chlorophyll molecules located in the thylakoid membrane.",
   "section_id": "ch2-s1",
-  "citations": [{"start_ts": 127.4, "end_ts": 131.2, "quote": "Light energy is captured by chlorophyll molecules in the thylakoid membrane."}]
+  "citations": [{"section_id": "ch2-s1", "start_ts": 127.4, "end_ts": 131.2, "quote": "Light energy is captured by chlorophyll molecules in the thylakoid membrane."}]
 }
 </output>
 <reasoning>The quote is verbatim from the transcript, ≤25 words, anchored to the correct section_id. The question is standalone — no reference to "the lecture." The answer is one sentence and directly supported by the citation.</reasoning>
