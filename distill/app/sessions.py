@@ -15,13 +15,13 @@ _signer = TimestampSigner(settings.session_cookie_secret.get_secret_value())
 
 
 def get_session_id(request: Request) -> str:
-    """Return the verified session_id from the cookie, or a newly minted one."""
+    """Return the session ID stashed by SessionMiddleware, falling back to the cookie."""
+    if hasattr(request.state, "session_id"):
+        return request.state.session_id
     raw = request.cookies.get(_COOKIE_NAME)
     if raw:
         try:
-            return _signer.unsign(
-                raw, max_age=int(_COOKIE_MAX_AGE.total_seconds())
-            ).decode()
+            return _signer.unsign(raw, max_age=int(_COOKIE_MAX_AGE.total_seconds())).decode()
         except BadSignature:
             pass
     return _mint_session_id()
@@ -32,27 +32,34 @@ def _mint_session_id() -> str:
 
 
 class SessionMiddleware(BaseHTTPMiddleware):
-    """Set a signed session cookie on every response if one isn't already present."""
+    """Resolve or mint a session ID, stash it on request.state, and set the cookie."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         existing = request.cookies.get(_COOKIE_NAME)
+        session_id: str | None = None
+
         if existing:
             try:
-                _signer.unsign(existing, max_age=int(_COOKIE_MAX_AGE.total_seconds()))
-                response = await call_next(request)
-                return response
+                session_id = _signer.unsign(
+                    existing, max_age=int(_COOKIE_MAX_AGE.total_seconds())
+                ).decode()
             except BadSignature:
-                pass
+                session_id = None
 
-        session_id = _mint_session_id()
-        signed = _signer.sign(session_id).decode()
+        mint_cookie = session_id is None
+        if mint_cookie:
+            session_id = _mint_session_id()
+
+        request.state.session_id = session_id
         response = await call_next(request)
-        response.set_cookie(
-            key=_COOKIE_NAME,
-            value=signed,
-            max_age=_COOKIE_MAX_AGE,
-            httponly=True,
-            secure=not settings.is_dev,
-            samesite="lax",
-        )
+
+        if mint_cookie:
+            response.set_cookie(
+                key=_COOKIE_NAME,
+                value=_signer.sign(session_id).decode(),
+                max_age=_COOKIE_MAX_AGE,
+                httponly=True,
+                secure=not settings.is_dev,
+                samesite="lax",
+            )
         return response
