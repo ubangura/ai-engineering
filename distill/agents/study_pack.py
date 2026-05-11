@@ -2,13 +2,13 @@ import functools
 import json
 import os
 
-from app.clients.anthropic import get_anthropic_client
 from models.domain import Outline, StudyPack
 
 from agents.messaging import complete
 
 _MODEL = "claude-sonnet-4-6"
 _MAX_ATTEMPTS = 3
+_AGENT_NAME = "study_pack"
 
 
 @functools.lru_cache(maxsize=1)
@@ -36,8 +36,7 @@ def _clamp_temperature(raw: float) -> float:
 async def run_study_pack(
     transcript: str, outline: Outline, video_id: str, _job_id: str = ""
 ) -> StudyPack:
-    client = get_anthropic_client()
-    system_text = (
+    system_prompt = (
         _load_system_prompt()
         + "\n\n"
         + _load_category_prompt(outline.inferred_category)
@@ -49,13 +48,12 @@ async def run_study_pack(
 
     for attempt in range(_MAX_ATTEMPTS):
         raw = await complete(
-            client,
-            _MODEL,
-            16000,
-            system_text,
-            transcript,
-            instruction,
-            agent="study_pack",
+            model=_MODEL,
+            max_tokens=16000,
+            system_prompt=system_prompt,
+            transcript=transcript,
+            instruction=instruction,
+            agent=_AGENT_NAME,
             video_id=video_id,
             temperature=temperature,
         )

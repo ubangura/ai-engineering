@@ -1,16 +1,17 @@
 import logging
 import time
 
-import anthropic
+from app.clients.anthropic import get_anthropic_client
 
 logger = logging.getLogger(__name__)
 
+_client = get_anthropic_client()
+
 
 async def complete(
-    client: anthropic.AsyncAnthropic,
     model: str,
     max_tokens: int,
-    system_text: str,
+    system_prompt: str,
     transcript: str,
     instruction: str,
     agent: str,
@@ -25,7 +26,7 @@ async def complete(
         "system": [
             {
                 "type": "text",
-                "text": system_text,
+                "text": system_prompt,
                 "cache_control": {"type": "ephemeral"},
             }
         ],
@@ -46,7 +47,7 @@ async def complete(
     if temperature is not None:
         params["temperature"] = temperature
 
-    response = await client.messages.create(**params)
+    response = await _client.messages.create(**params)
 
     logger.info(
         "anthropic_call",
@@ -60,7 +61,9 @@ async def complete(
         },
     )
 
-    text_block = next((b for b in response.content if b.type == "text"), None)
+    text_block = next(
+        (block for block in response.content if block.type == "text"), None
+    )
     if text_block is None:
         raise RuntimeError(f"{agent} agent returned no text block")
 

@@ -2,7 +2,6 @@ import functools
 import json
 import os
 
-from app.clients.anthropic import get_anthropic_client
 from app.transcript.gate import GateRejection
 from models.domain import ErrorResponse, Outline
 
@@ -11,6 +10,7 @@ from agents.messaging import complete
 _MODEL = "claude-sonnet-4-6"
 _MAX_ATTEMPTS = 3
 _NON_LECTURE_THRESHOLD = 0.4
+_AGENT_NAME = "outline"
 
 
 @functools.lru_cache(maxsize=1)
@@ -22,28 +22,26 @@ def _load_system_prompt() -> str:
         return f.read()
 
 
-async def run_outline(transcript: str, video_id: str, _job_id: str = "") -> Outline:
-    client = get_anthropic_client()
+async def run_outline(
+    timestamped_transcript: str, video_id: str, _job_id: str = ""
+) -> Outline:
     instruction = "Produce a complete Outline for this transcript."
+    last_exc: Exception | None = None
 
-    for attempt in range(_MAX_ATTEMPTS):
+    for _ in range(_MAX_ATTEMPTS):
         raw = await complete(
-            client,
-            _MODEL,
-            1000,
-            _load_system_prompt(),
-            transcript,
-            instruction,
-            agent="outline",
+            model=_MODEL,
+            max_tokens=2000,
+            system_prompt=_load_system_prompt(),
+            transcript=timestamped_transcript,
+            instruction=instruction,
+            agent=_AGENT_NAME,
             video_id=video_id,
         )
         try:
             outline = Outline.model_validate(json.loads(raw))
         except Exception as exc:
-            if attempt == _MAX_ATTEMPTS - 1:
-                raise RuntimeError(
-                    f"Outline agent failed to produce valid JSON after {_MAX_ATTEMPTS} attempts"
-                ) from exc
+            last_exc = exc
             continue
 
         if outline.is_lecture_confidence < _NON_LECTURE_THRESHOLD:
@@ -55,4 +53,9 @@ async def run_outline(transcript: str, video_id: str, _job_id: str = "") -> Outl
             )
         return outline
 
-    raise RuntimeError("Unreachable")
+    raise GateRejection(
+        ErrorResponse(
+            code="internal_error",
+            detail="Could not analyse this transcript. Try again later.",
+        )
+    ) from last_exc

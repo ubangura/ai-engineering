@@ -5,14 +5,14 @@ import re
 import time
 from collections.abc import AsyncGenerator
 
-import anthropic
-from anthropic.types import ToolUnionParam
+from anthropic.types import MessageParam
 from app.clients.anthropic import get_anthropic_client
 from app.sse import sse_event
 from models.domain import Citation, QAResponse
 from tools.web_search import WEB_SEARCH_TOOL
 
 _MODEL = "claude-haiku-4-5-20251001"
+_AGENT_NAME = "qa"
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def _load_system_prompt() -> str:
 
 
 async def run_qa(
-    transcript: str,
+    timestamped_transcript: str,
     history: list[dict],
     question: str,
     video_id: str,
@@ -38,17 +38,16 @@ async def run_qa(
     response_language: str | None = None,
 ) -> AsyncGenerator[str, None]:
     client = get_anthropic_client()
-    language_note = (
-        f"\n\nRespond in language: {response_language}" if response_language else ""
+    messages = _build_messages(
+        timestamped_transcript, history, question, response_language
     )
-    messages = _build_messages(transcript, history, question, language_note)
 
     answer_parts: list[str] = []
     start = time.monotonic()
 
     async with client.messages.stream(
         model=_MODEL,
-        max_tokens=4096,
+        max_tokens=4000,
         system=[
             {
                 "type": "text",
@@ -60,28 +59,23 @@ async def run_qa(
         tools=[WEB_SEARCH_TOOL],  # type: ignore[arg-type]
     ) as stream:
         async for event in stream:
-            if hasattr(event, "type"):
-                if (
-                    event.type == "content_block_delta"
-                    and event.delta.type == "text_delta"
-                ):
-                    chunk = event.delta.text
-                    answer_parts.append(chunk)
-                    yield sse_event("delta", {"text": chunk})
-                elif event.type == "content_block_start":
-                    if (
-                        hasattr(event.content_block, "type")
-                        and event.content_block.type == "tool_use"
-                        and event.content_block.name == "web_search"
-                    ):
-                        yield sse_event("tool-use", {"tool": "web_search", "query": ""})
+            if event.type == "content_block_delta" and event.delta.type == "text_delta":
+                chunk = event.delta.text
+                answer_parts.append(chunk)
+                yield sse_event("delta", {"text": chunk})
+            elif (
+                event.type == "content_block_start"
+                and event.content_block.type == "tool_use"
+                and event.content_block.name == "web_search"
+            ):
+                yield sse_event("tool-use", {"tool": "web_search", "query": ""})
 
         final_message = await stream.get_final_message()
 
     logger.info(
         "anthropic_call",
         extra={
-            "agent": "qa",
+            "agent": _AGENT_NAME,
             "video_id": video_id,
             "session_id": session_id,
             "model": _MODEL,
@@ -92,7 +86,7 @@ async def run_qa(
     )
 
     answer_text = "".join(answer_parts)
-    citations = _extract_citations_from_text(answer_text, transcript)
+    citations = _extract_citations_from_text(answer_text, timestamped_transcript)
 
     for citation in citations:
         yield sse_event("citation", citation.model_dump())
@@ -108,18 +102,22 @@ async def run_qa(
 
 
 def _build_messages(
-    transcript: str,
+    timestamped_transcript: str,
     history: list[dict],
     question: str,
-    language_note: str,
-) -> list[anthropic.types.MessageParam]:
+    response_language: str | None,
+) -> list[MessageParam]:
+    user_text = question.strip()
+    if response_language:
+        user_text += f"\n\nRespond in language: {response_language}"
+
     messages = [
         {
             "role": "user",
             "content": [
                 {
                     "type": "text",
-                    "text": transcript,
+                    "text": timestamped_transcript,
                     "cache_control": {"type": "ephemeral"},
                 },
                 {
@@ -137,13 +135,15 @@ def _build_messages(
     for turn in history:
         messages.append({"role": turn["role"], "content": turn["content"]})
 
-    messages.append({"role": "user", "content": question + language_note})
+    messages.append({"role": "user", "content": user_text})
     return messages
 
 
-def _extract_citations_from_text(text: str, transcript: str) -> list[Citation]:
+def _extract_citations_from_text(
+    text: str, timestamped_transcript: str
+) -> list[Citation]:
     seen: set[int] = set()
-    citations = []
+    citations: list[Citation] = []
     for match in _INLINE_TIMESTAMP_RE.finditer(text):
         start_seconds = int(match.group(1)) * 60 + int(match.group(2))
         if start_seconds in seen:
@@ -154,16 +154,16 @@ def _extract_citations_from_text(text: str, transcript: str) -> list[Citation]:
                 section_id="",
                 start_ts=float(start_seconds),
                 end_ts=float(start_seconds + 10),
-                quote=_find_quote_near(transcript, float(start_seconds)),
+                quote=_find_quote_near(timestamped_transcript, float(start_seconds)),
             )
         )
     return citations
 
 
-def _find_quote_near(transcript: str, target_ts: float) -> str:
+def _find_quote_near(timestamped_transcript: str, target_ts: float) -> str:
     best_text = ""
     best_diff = float("inf")
-    lines = transcript.splitlines()
+    lines = timestamped_transcript.splitlines()
     for i, line in enumerate(lines):
         m = _VTT_TIMESTAMP_RE.match(line)
         if not m:
