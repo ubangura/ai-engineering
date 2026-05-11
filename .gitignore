@@ -33,3 +33,15 @@ htmlcov/
 .idea/
 .vscode/
 *.code-workspace
+
+# Windows WSL artifacts
+*:Zone.Identifier
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Next.js
+.next/
+out/
+node_modules/
+.env.local

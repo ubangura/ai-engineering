@@ -14,4 +14,7 @@ dependencies = [
 py-modules = ["api_config", "messaging"]
 
 [tool.uv.workspace]
-members = ["01-llm-apis", "python-for-ai"]
+members = [
+    "01-llm-apis",
+    "python-for-ai",
+]
