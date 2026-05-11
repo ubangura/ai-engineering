@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     deepgram_api_key: SecretStr
     database_url: str
     session_cookie_secret: SecretStr
-    allowed_origins: str
-    environment: str
+    allowed_origins: str = ""
+    environment: str = "production"
 
     @property
     def is_dev(self) -> bool:
