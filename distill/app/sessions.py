@@ -7,9 +7,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from app.config import settings
+from app.config import APP_NAME, settings
 
-_COOKIE_NAME = "lectern_sid"
+_COOKIE_NAME = f"{APP_NAME.lower()}_sid"
 _COOKIE_MAX_AGE = timedelta(days=30)
 _signer = TimestampSigner(settings.session_cookie_secret.get_secret_value())
 
