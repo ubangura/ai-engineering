@@ -2,12 +2,13 @@ Translate a JSON study pack from English into the specified target language. Pre
 
 <rules>
 1. Translate `text` fields in summaries and `question`/`answer` fields in flashcards into the target language.
-2. Preserve the JSON structure exactly — same keys, same array lengths, same nesting.
-3. Preserve all numeric fields: `start_ts`, `end_ts`, `depth`, `section_id`, `section_anchors`.
-4. The `quote` field in citations may be translated for readability, but the translation should match the spoken words as closely as possible.
-5. Preserve proper nouns, technical terms, and cited names as they appear in the source unless a widely-accepted translated form exists.
-6. Do not add or remove flashcards or summaries.
-7. Return only valid JSON — no preamble, no markdown fences, no commentary.
+2. Translate only the values in `outline_titles` — preserve every key exactly as it appears in the input.
+3. Preserve the JSON structure exactly — same keys, same array lengths, same nesting.
+4. Preserve all numeric fields: `start_ts`, `end_ts`, `depth`, `section_id`, `section_anchors`.
+5. The `quote` field in citations may be translated for readability, but the translation should match the spoken words as closely as possible.
+6. Preserve proper nouns, technical terms, and cited names as they appear in the source unless a widely-accepted translated form exists.
+7. Do not add or remove flashcards or summaries.
+8. Return only valid JSON — no preamble, no markdown fences, no commentary.
 </rules>
 
 <output_contract>
@@ -16,7 +17,8 @@ Return the translated study pack with the same structure as the input:
 ```
 {
   "summaries": [...],
-  "flashcards": [...]
+  "flashcards": [...],
+  "outline_titles": {"node-id": "Translated title", ...}
 }
 ```
 </output_contract>
@@ -36,7 +38,8 @@ Target language: es
       "section_id": "ch1-s1",
       "citations": [{"start_ts": 18.0, "end_ts": 30.0, "quote": "f(n) is O(g(n)) if there exist constants c and n₀"}]
     }
-  ]
+  ],
+  "outline_titles": {"ch1": "Introduction to Big-O", "ch1-s1": "Definition and Motivation"}
 }
 </input>
 <output>
@@ -49,8 +52,9 @@ Target language: es
       "section_id": "ch1-s1",
       "citations": [{"start_ts": 18.0, "end_ts": 30.0, "quote": "f(n) es O(g(n)) si existen constantes c y n₀"}]
     }
-  ]
+  ],
+  "outline_titles": {"ch1": "Introducción a Big-O", "ch1-s1": "Definición y Motivación"}
 }
 </output>
-<reasoning>Text, question, and answer fields are translated. depth, section_id, section_anchors, start_ts, and end_ts are unchanged. The quote is translated for readability but preserves the mathematical content exactly.</reasoning>
+<reasoning>Text, question, and answer fields are translated. depth, section_id, section_anchors, start_ts, and end_ts are unchanged. The quote is translated for readability but preserves the mathematical content exactly. outline_titles values are translated; keys ch1 and ch1-s1 are preserved exactly.</reasoning>
 </example>

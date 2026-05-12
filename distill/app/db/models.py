@@ -107,6 +107,21 @@ class Translation(Base):
     )
 
 
+class TranslatedOutline(Base):
+    __tablename__ = "translated_outlines"
+
+    video_id: Mapped[str] = mapped_column(
+        Text,
+        ForeignKey("videos.video_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    language: Mapped[str] = mapped_column(Text, primary_key=True)
+    outline_titles: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
 class QASession(Base):
     __tablename__ = "qa_sessions"
 

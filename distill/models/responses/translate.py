@@ -17,3 +17,6 @@ class TranslationResponse(BaseModel):
     flashcards: list[Flashcard] = Field(
         description="Flashcards translated into target_language; section_id, start_ts, and end_ts must match the source exactly"
     )
+    outline_titles: dict[str, str] = Field(
+        description="Flat mapping of outline node ID to translated title; all node IDs from the source outline must be present"
+    )

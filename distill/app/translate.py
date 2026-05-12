@@ -38,6 +38,7 @@ def _strip_fence(text: str) -> str:
 async def translate_pack(
     summaries: list[Summary],
     flashcards: list[Flashcard],
+    outline_titles: dict[str, str],
     target_language: str,
     video_id: str,
 ) -> TranslationResponse:
@@ -45,6 +46,7 @@ async def translate_pack(
         {
             "summaries": [summary.model_dump() for summary in summaries],
             "flashcards": [file.model_dump() for file in flashcards],
+            "outline_titles": outline_titles,
         }
     )
     instruction = f"Target language: {target_language}\n\n{payload}"
@@ -90,4 +92,5 @@ async def translate_pack(
         target_language=target_language,
         summaries=[Summary(**summary) for summary in data["summaries"]],
         flashcards=[Flashcard(**flashcard) for flashcard in data["flashcards"]],
+        outline_titles=data["outline_titles"],
     )
