@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from models.domain import Flashcard, Outline, StudyPack, Summary
 from models.requests.video import VideoIngestRequest
 from models.responses.video import VideoIngestResponse, VideoStudyPackResponse
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, get_session
@@ -88,18 +89,23 @@ async def submit_video(
             detail={**exc.error.model_dump(), "retry_after_seconds": exc.retry_after_seconds},
         )
 
-    if session.get(orm.Video, video_id) is None:
-        session.add(
-            orm.Video(
-                video_id=video_id,
-                title=metadata.title,
-                duration_seconds=metadata.duration_seconds,
-                uploader=metadata.uploader,
-                metadata_=metadata.model_dump(),
-            )
+    video = session.get(orm.Video, video_id)
+    if video is None:
+        video = orm.Video(
+            video_id=video_id,
+            title=metadata.title,
+            duration_seconds=metadata.duration_seconds,
+            uploader=metadata.uploader,
+            metadata_=metadata.model_dump(),
         )
-        # flush now so the Video row exists before the FK-dependent Job insert
-        session.flush()
+        session.add(video)
+        try:
+            session.flush()
+        except IntegrityError:
+            session.rollback()
+            video = session.get(orm.Video, video_id)
+            if not video:
+                raise
 
     job_id = str(uuid.uuid4())
     session.add(orm.Job(job_id=uuid.UUID(job_id), video_id=video_id))

@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     session_cookie_secret: SecretStr
     allowed_origins: str = ""
     environment: str = "production"
+    youtube_cookies_path: str | None = None
+    yt_dlp_node_path: str = "node"
 
     @property
     def is_dev(self) -> bool:

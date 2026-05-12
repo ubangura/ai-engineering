@@ -2,6 +2,8 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator
 
+_RAILWAY_IDLE_CONNECTION_TIMEOUT = 15
+
 
 def sse_event(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
@@ -13,7 +15,7 @@ def sse_keepalive() -> str:
 
 async def keepalive_stream(
     source: AsyncGenerator[str, None],
-    interval_seconds: int = 15,
+    interval_seconds: int = _RAILWAY_IDLE_CONNECTION_TIMEOUT,
 ) -> AsyncGenerator[str, None]:
     """Wrap an SSE generator and inject a keepalive every `interval_seconds`."""
     queue: asyncio.Queue[str | None] = asyncio.Queue()

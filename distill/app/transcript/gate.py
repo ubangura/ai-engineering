@@ -6,6 +6,8 @@ import yt_dlp
 from models.domain import ErrorResponse, VideoMetadata
 from yt_dlp.utils import DownloadError
 
+from app.config import settings
+
 
 def _extract_video_id(url: str) -> str | None:
     parsed = urlparse(url.strip())
@@ -13,7 +15,12 @@ def _extract_video_id(url: str) -> str | None:
     hostname = hostname.lower() if hostname else None
 
     if hostname in ("www.youtube.com", "youtube.com", "m.youtube.com"):
-        video_id = parse_qs(parsed.query).get("v", [None])[0]
+        if parsed.path.startswith("/shorts/"):
+            video_id = parsed.path.split("/")[2]
+        elif parsed.path.startswith("/embed/"):
+            video_id = parsed.path.split("/")[2]
+        else:
+            video_id = parse_qs(parsed.query).get("v", [None])[0]
     elif hostname == "youtu.be":
         video_id = parsed.path.lstrip("/")
     else:
@@ -55,6 +62,9 @@ async def _fetch_info(url: str) -> dict:
         "no_warnings": True,
         "skip_download": True,
         "noplaylist": True,
+        "js_runtimes": {"node": {"path": settings.yt_dlp_node_path}},
+        "remote_components": ["ejs:github"],
+        **({"cookiefile": settings.youtube_cookies_path} if settings.youtube_cookies_path else {}),
     }
 
     for attempt in range(3):
