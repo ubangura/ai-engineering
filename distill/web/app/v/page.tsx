@@ -1,23 +1,22 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import remarkMath from 'remark-math'
-import rehypeKatex from 'rehype-katex'
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronDown,
-  Loader2,
+import { AnimatePresence, motion } from 'framer-motion'
+import {
   AlertCircle,
   Check,
-  Circle,
-  Send
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  Loader2,
+  Send,
 } from 'lucide-react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import rehypeKatex from 'rehype-katex'
+import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? ''
 
@@ -75,6 +74,9 @@ interface ProcessingState {
   transcriptSource?: string
   outline: boolean
   studyPack: boolean
+  title?: string
+  duration?: number
+  outlineChapters?: string[]
 }
 
 interface ChatMessage {
@@ -87,6 +89,14 @@ interface ChatMessage {
 interface ErrorState {
   code: string
   detail: string
+}
+
+function applyOutlineTitles(nodes: OutlineNode[], titles: Record<string, string>): OutlineNode[] {
+  return nodes.map(node => ({
+    ...node,
+    title: titles[node.id] ?? node.title,
+    children: applyOutlineTitles(node.children, titles),
+  }))
 }
 
 // Utility to format timestamp
@@ -106,12 +116,21 @@ function ErrorCard({ error, onRetry }: { error: ErrorState; onRetry: () => void 
           <div>
             <h2 className="font-semibold text-text">Something went wrong</h2>
             <p className="text-text-muted mt-1">{error.detail}</p>
-            <button
-              onClick={onRetry}
-              className="mt-4 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium"
-            >
-              Try again
-            </button>
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={onRetry}
+                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors font-medium"
+              >
+                Try again
+              </button>
+              <Link
+                href="/"
+                className="px-4 py-2 bg-surface border border-border text-text rounded-lg hover:bg-surface-alt transition-colors font-medium inline-flex items-center gap-1.5"
+              >
+                <Home className="w-4 h-4" />
+                Home
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -119,47 +138,198 @@ function ErrorCard({ error, onRetry }: { error: ErrorState; onRetry: () => void 
   )
 }
 
-// Processing Checklist Component
-function ProcessingChecklist({ state }: { state: ProcessingState }) {
-  const items = [
-    { key: 'metadata', label: 'Metadata verified', done: state.metadata },
-    { 
-      key: 'transcript', 
-      label: 'Transcript fetched', 
-      done: state.transcript,
-      badge: state.transcriptSource
+function ProcessingView({ state }: { state: ProcessingState }) {
+  const activeIndex = !state.metadata ? 0 : !state.transcript ? 1 : !state.outline ? 2 : 3
+
+  const stages = [
+    {
+      label: 'Verifying',
+      description: state.metadata
+        ? (state.title ? `"${state.title.length > 42 ? state.title.slice(0, 42) + '…' : state.title}"` : 'Ready')
+        : 'Checking video metadata',
+      done: state.metadata,
     },
-    { key: 'outline', label: 'Outline drafted', done: state.outline },
-    { key: 'studyPack', label: 'Study pack assembled', done: state.studyPack },
+    {
+      label: 'Transcribing',
+      description: state.transcript
+        ? `${state.transcriptSource ?? 'fetched'} · ready`
+        : 'Extracting lecture audio',
+      done: state.transcript,
+    },
+    {
+      label: 'Outlining',
+      description: state.outline
+        ? `${state.outlineChapters?.length ?? 0} chapters found`
+        : 'Analyzing lecture structure',
+      done: state.outline,
+    },
+    {
+      label: 'Synthesizing',
+      description: state.studyPack ? 'Complete' : 'Writing summaries & flashcards',
+      done: state.studyPack,
+    },
   ]
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="bg-surface border border-border rounded-lg p-8 max-w-md w-full">
-        <h2 className="text-2xl font-bold text-text mb-6">Processing your lecture...</h2>
-        <ul className="space-y-4">
-          {items.map((item) => (
-            <li key={item.key} className="flex items-center gap-3">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
-                item.done ? 'bg-accent text-white' : 'border-2 border-border'
-              }`}>
-                {item.done ? (
-                  <Check className="w-3 h-3" />
-                ) : (
-                  <Circle className="w-3 h-3 text-border" />
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 relative overflow-hidden">
+      {/* Ambient glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <motion.div
+          animate={{ scale: [1, 1.1, 1], opacity: [0.05, 0.1, 0.05] }}
+          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] h-[480px] rounded-full bg-accent"
+          style={{ filter: 'blur(90px)' }}
+        />
+      </div>
+
+      <div className="relative z-10 w-full max-w-xs flex flex-col gap-10">
+        {/* Video info */}
+        <div className="text-center" style={{ minHeight: 72 }}>
+          <AnimatePresence mode="wait">
+            {state.title ? (
+              <motion.div
+                key="title"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <p className="text-xs text-text-muted font-mono tracking-widest uppercase mb-2">Processing</p>
+                <h1 className="text-xl font-bold text-text leading-snug" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {state.title}
+                </h1>
+                {state.duration && (
+                  <span className="inline-block mt-2 text-xs text-text-muted font-mono bg-surface px-2 py-0.5 rounded border border-border">
+                    {Math.floor(state.duration / 60)} min
+                  </span>
+                )}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center justify-center gap-2 pt-6"
+              >
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                  className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full"
+                />
+                <span className="text-sm text-text-muted font-mono">Connecting…</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Pipeline */}
+        <div>
+          {stages.map((stage, i) => {
+            const isDone = stage.done
+            const isActive = activeIndex === i
+
+            return (
+              <div key={i} className="flex gap-4">
+                {/* Left: node + connector */}
+                <div className="flex flex-col items-center" style={{ width: 28 }}>
+                  <div className="relative flex-shrink-0" style={{ width: 28, height: 28 }}>
+                    {isDone ? (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+                        className="w-7 h-7 rounded-full bg-accent flex items-center justify-center"
+                      >
+                        <Check className="w-3.5 h-3.5 text-white" />
+                      </motion.div>
+                    ) : isActive ? (
+                      <div className="relative w-7 h-7">
+                        <motion.div
+                          animate={{ scale: [1, 1.7, 1], opacity: [0.35, 0, 0.35] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
+                          className="absolute inset-0 rounded-full bg-accent"
+                        />
+                        <div className="absolute inset-0 rounded-full border-2 border-accent flex items-center justify-center">
+                          <div className="w-2 h-2 rounded-full bg-accent" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-7 h-7 rounded-full border-2 border-border" />
+                    )}
+                  </div>
+                  {i < stages.length - 1 && (
+                    <div className="relative overflow-hidden my-1" style={{ width: 2, minHeight: 36, background: 'var(--border)' }}>
+                      {isDone && (
+                        <motion.div
+                          initial={{ height: 0 }}
+                          animate={{ height: '100%' }}
+                          transition={{ duration: 0.35, ease: 'easeOut' }}
+                          className="absolute top-0 left-0 right-0 bg-accent"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: label + description */}
+                <div className={i < stages.length - 1 ? 'pb-9' : ''}>
+                  <p className={`text-sm font-semibold leading-none pt-1 ${isDone || isActive ? 'text-text' : 'text-text-muted'}`}>
+                    {stage.label}
+                  </p>
+                  <AnimatePresence mode="wait">
+                    <motion.p
+                      key={stage.description}
+                      initial={{ opacity: 0, y: 2 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-xs text-text-muted mt-1 font-mono"
+                    >
+                      {stage.description}
+                    </motion.p>
+                  </AnimatePresence>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Chapter preview */}
+        <AnimatePresence>
+          {state.outlineChapters && state.outlineChapters.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <p className="text-xs text-text-muted font-mono tracking-widest uppercase mb-2">Chapters</p>
+              <div className="space-y-1.5">
+                {state.outlineChapters.slice(0, 5).map((chapter, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.08, duration: 0.3 }}
+                    className="text-xs text-text-muted bg-surface border border-border rounded px-3 py-1.5 font-mono"
+                    style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
+                    {chapter}
+                  </motion.div>
+                ))}
+                {state.outlineChapters.length > 5 && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.45 }}
+                    className="text-xs text-text-muted text-center"
+                  >
+                    +{state.outlineChapters.length - 5} more
+                  </motion.p>
                 )}
               </div>
-              <span className={`${item.done ? 'text-text' : 'text-text-muted'}`}>
-                {item.label}
-              </span>
-              {item.badge && item.done && (
-                <span className="font-mono text-xs bg-surface-alt text-accent px-2 py-0.5 rounded">
-                  {item.badge}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )
@@ -207,7 +377,21 @@ function OutlineTree({
 function MarkdownText({ children, dir, className }: { children: string; dir?: string; className?: string }) {
   return (
     <div dir={dir} className={className}>
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+          h2: ({ children: c }) => <h2 className="text-lg font-bold text-text mt-6 mb-2 first:mt-0">{c}</h2>,
+          h3: ({ children: c }) => <h3 className="text-base font-semibold text-text mt-4 mb-1.5">{c}</h3>,
+          p: ({ children: c }) => <p className="text-text leading-relaxed mb-3 last:mb-0">{c}</p>,
+          ul: ({ children: c }) => <ul className="list-disc pl-5 mb-3 space-y-1 text-text">{c}</ul>,
+          ol: ({ children: c }) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-text">{c}</ol>,
+          li: ({ children: c }) => <li className="leading-relaxed">{c}</li>,
+          strong: ({ children: c }) => <strong className="font-semibold text-text">{c}</strong>,
+          em: ({ children: c }) => <em className="italic">{c}</em>,
+          code: ({ children: c }) => <code className="font-mono text-sm bg-surface-alt px-1 py-0.5 rounded">{c}</code>,
+        }}
+      >
         {children}
       </ReactMarkdown>
     </div>
@@ -586,8 +770,9 @@ function StudyViewContent() {
       withCredentials: true,
     })
 
-    eventSource.addEventListener('metadata-gate-pass', () => {
-      setProcessing(prev => ({ ...prev, metadata: true }))
+    eventSource.addEventListener('metadata-gate-pass', (e) => {
+      const data = JSON.parse(e.data)
+      setProcessing(prev => ({ ...prev, metadata: true, title: data.title, duration: data.duration }))
     })
 
     eventSource.addEventListener('transcript-source', (e) => {
@@ -599,8 +784,10 @@ function StudyViewContent() {
       setProcessing(prev => ({ ...prev, transcript: true }))
     })
 
-    eventSource.addEventListener('outline-done', () => {
-      setProcessing(prev => ({ ...prev, outline: true }))
+    eventSource.addEventListener('outline-done', (e) => {
+      const data = JSON.parse(e.data)
+      const chapters = (data.outline?.nodes ?? []).map((n: OutlineNode) => n.title)
+      setProcessing(prev => ({ ...prev, outline: true, outlineChapters: chapters }))
     })
 
     eventSource.addEventListener('study-pack-done', (e) => {
@@ -684,6 +871,9 @@ function StudyViewContent() {
           ...prev,
           summaries: data.summaries,
           flashcards: data.flashcards,
+          outline: data.outline_titles
+            ? { ...prev.outline, nodes: applyOutlineTitles(prev.outline.nodes, data.outline_titles) }
+            : prev.outline,
         } : null)
       }
     } catch {
@@ -701,7 +891,7 @@ function StudyViewContent() {
 
   // Processing state
   if (isProcessing) {
-    return <ProcessingChecklist state={processing} />
+    return <ProcessingView state={processing} />
   }
 
   // Loading state
