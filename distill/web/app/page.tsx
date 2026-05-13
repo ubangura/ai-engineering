@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? ''
 

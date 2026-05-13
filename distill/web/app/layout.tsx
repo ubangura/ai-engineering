@@ -1,7 +1,7 @@
+import 'katex/dist/katex.min.css'
 import type { Metadata, Viewport } from 'next'
 import { Bricolage_Grotesque, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
-import 'katex/dist/katex.min.css'
 
 const bricolageGrotesque = Bricolage_Grotesque({
   subsets: ['latin'],
