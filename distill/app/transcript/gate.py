@@ -64,7 +64,11 @@ async def _fetch_info(url: str) -> dict:
         "noplaylist": True,
         "js_runtimes": {"node": {"path": settings.yt_dlp_node_path}},
         "remote_components": ["ejs:github"],
-        **({"cookiefile": settings.youtube_cookies_path} if settings.youtube_cookies_path else {}),
+        **(
+            {"cookiefile": settings.youtube_cookies_path}
+            if settings.youtube_cookies_path
+            else {}
+        ),
     }
 
     for attempt in range(3):
@@ -128,25 +132,16 @@ def _validate(video_id: str, info: dict) -> VideoMetadata:
             )
         )
 
-    age_limit = int(info.get("age_limit") or 0)
+    age_limit = int(info.get("age_limit", 0))
     if age_limit > 0:
         raise GateRejection(
             ErrorResponse(
                 code="age_restricted",
-                detail="This video requires sign-in to view.",
+                detail="This video is age-restricted, requiring sign-in to view.",
             )
         )
 
-    categories = info.get("categories") or []
-    if "Music" in categories:
-        raise GateRejection(
-            ErrorResponse(
-                code="music_category",
-                detail="Music videos aren't supported. Try an academic or instructional video.",
-            )
-        )
-
-    duration = int(info.get("duration") or 0)
+    duration = int(info.get("duration", 0))
     if duration <= 0:
         raise GateRejection(
             ErrorResponse(
@@ -164,20 +159,17 @@ def _validate(video_id: str, info: dict) -> VideoMetadata:
         was_live=bool(info.get("was_live")),
         availability=_normalize_availability(availability),
         age_limit=age_limit,
-        categories=categories,
+        categories=info.get("categories", []),
     )
 
 
 def _normalize_availability(
     raw: str,
-) -> Literal["public", "unlisted", "private", "needs_auth"]:
-    mapping: dict[str, Literal["public", "unlisted", "private", "needs_auth"]] = {
-        "public": "public",
-        "unlisted": "unlisted",
-        "private": "private",
-        "needs_auth": "needs_auth",
-        "premium_only": "needs_auth",
-        "subscriber_only": "needs_auth",
-        "": "public",
-    }
-    return mapping.get(raw, "needs_auth")
+) -> Literal["public", "unlisted"]:
+    if raw in ("public", ""):
+        return "public"
+    if raw == "unlisted":
+        return "unlisted"
+    raise GateRejection(
+        ErrorResponse(code="private", detail="This video's availability is unknown.")
+    )
