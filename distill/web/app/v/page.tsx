@@ -24,8 +24,8 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? ''
 interface OutlineNode {
   id: string
   title: string
-  start_ts: number
-  end_ts: number
+  start_time: number
+  end_time: number
   level: 'chapter' | 'section' | 'topic'
   children: OutlineNode[]
 }
@@ -33,16 +33,12 @@ interface OutlineNode {
 interface Outline {
   video_id: string
   nodes: OutlineNode[]
-  inferred_category: string
-  is_lecture_confidence: number
-  language_detected: string
-  recommended_temperature: number
 }
 
 interface Citation {
   section_id: string
-  start_ts: number
-  end_ts: number
+  start_time: number
+  end_time: number
   quote: string
 }
 
@@ -58,7 +54,6 @@ type SummaryDepth = 'ninety_seconds' | 'five_minutes' | 'full'
 interface Summary {
   depth: SummaryDepth
   text: string
-  section_anchors: string[]
 }
 
 interface StudyPack {
@@ -355,14 +350,14 @@ function OutlineTree({
           transition={{ delay: index * 0.03 }}
         >
           <button
-            onClick={() => onSeek(node.start_ts)}
+            onClick={() => onSeek(node.start_time)}
             className="w-full text-left py-1.5 px-2 rounded hover:bg-surface-alt transition-colors group"
           >
             <span className="text-sm text-text group-hover:text-accent transition-colors">
               {node.title}
             </span>
             <span className="font-mono text-xs bg-surface-alt text-accent px-1.5 py-0.5 rounded ml-2">
-              {formatTimestamp(node.start_ts)}
+              {formatTimestamp(node.start_time)}
             </span>
           </button>
           {node.children && node.children.length > 0 && (
@@ -449,11 +444,11 @@ function FlashcardView({
                 className="mt-3 p-3 bg-surface-alt rounded font-mono text-sm cursor-pointer hover:bg-muted transition-colors flex-shrink-0"
                 onClick={(e) => {
                   e.stopPropagation()
-                  onSeek(card.citations[0].start_ts)
+                  onSeek(card.citations[0].start_time)
                 }}
               >
                 <span className="text-accent font-medium">
-                  {formatTimestamp(card.citations[0].start_ts)}
+                  {formatTimestamp(card.citations[0].start_time)}
                 </span>
                 <span className="text-text-muted ml-2">&ldquo;{card.citations[0].quote}&rdquo;</span>
               </div>
@@ -490,10 +485,12 @@ function FlashcardView({
 function QAChat({
   videoId,
   onSeek,
+  onRateLimit,
   dir,
 }: {
   videoId: string
   onSeek: (ts: number) => void
+  onRateLimit: (message: string) => void
   dir?: string
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -531,6 +528,14 @@ function QAChat({
         credentials: 'include',
         body: JSON.stringify({ video_id: videoId, question: userMessage }),
       })
+
+      if (response.status === 429) {
+        const data = await response.json()
+        const minutes = Math.ceil((data.detail?.retry_after_seconds ?? 3600) / 60)
+        onRateLimit(`Q&A limit reached. Try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`)
+        setMessages(prev => prev.slice(0, -1))
+        return
+      }
 
       if (!response.ok) throw new Error('Failed to get response')
 
@@ -579,7 +584,7 @@ function QAChat({
               } else if (parsed.citation) {
                 assistantMessage.citations = [
                   ...(assistantMessage.citations || []),
-                  { timestamp: parsed.citation.start_ts, quote: parsed.citation.quote },
+                  { timestamp: parsed.citation.start_time, quote: parsed.citation.quote },
                 ]
                 setMessages(prev => [...prev.slice(0, -1), { ...assistantMessage }])
               }
@@ -862,7 +867,8 @@ function StudyViewContent() {
 
       if (response.status === 429) {
         const data = await response.json()
-        showToast(`Translation limit reached. Try again in ${Math.ceil(data.retry_after_seconds / 60)} minutes.`)
+        const minutes = Math.ceil((data.detail?.retry_after_seconds ?? 3600) / 60)
+        showToast(`Translation limit reached. Try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`)
         setSelectedLanguage('en')
         if (originalStudyPackRef.current) setStudyPack(originalStudyPackRef.current)
       } else if (response.ok) {
@@ -916,11 +922,19 @@ function StudyViewContent() {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {toast && (
-        <div className="fixed bottom-4 right-4 z-50 bg-surface border border-border rounded-lg px-4 py-3 shadow-lg text-text text-sm max-w-sm">
-          {toast}
-        </div>
-      )}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="fixed bottom-4 right-4 z-50 bg-accent-light border border-accent/40 rounded-lg px-4 py-3 shadow-lg text-text text-sm max-w-sm flex items-start gap-2"
+          >
+            <AlertCircle className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-surface border-b border-border px-4 py-3 flex items-center justify-between">
         <Link href="/" className="text-xl font-bold text-text hover:text-accent transition-colors">Distill</Link>
@@ -929,7 +943,7 @@ function StudyViewContent() {
         </h1>
         <div className="relative">
           {isTranslating && (
-            <Loader2 className="w-4 h-4 text-accent animate-spin absolute right-8 top-1/2 -translate-y-1/2" />
+            <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin absolute right-8 top-1/2 -translate-y-1/2" />
           )}
           <select
             value={selectedLanguage}
@@ -1062,7 +1076,7 @@ function StudyViewContent() {
             {rightTab === 'flashcards' ? (
               <FlashcardView flashcards={studyPack.flashcards} onSeek={seekTo} dir={isRtl ? 'rtl' : undefined} />
             ) : (
-              <QAChat videoId={videoId!} onSeek={seekTo} dir={isRtl ? 'rtl' : undefined} />
+              <QAChat videoId={videoId!} onSeek={seekTo} onRateLimit={showToast} dir={isRtl ? 'rtl' : undefined} />
             )}
           </div>
         </aside>
