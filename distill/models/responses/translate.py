@@ -12,10 +12,10 @@ class TranslationResponse(BaseModel):
         description="BCP-47 language code of the translation (e.g. 'fr', 'zh-CN')"
     )
     summaries: list[Summary] = Field(
-        description="Summaries translated into target_language; section_anchors and depth must match the source exactly"
+        description="Summaries translated into target_language; depth must match the source exactly"
     )
     flashcards: list[Flashcard] = Field(
-        description="Flashcards translated into target_language; section_id, start_ts, and end_ts must match the source exactly"
+        description="Flashcards translated into target_language; section_id, start_time, and end_time must match the source exactly"
     )
     outline_titles: dict[str, str] = Field(
         description="Flat mapping of outline node ID to translated title; all node IDs from the source outline must be present"

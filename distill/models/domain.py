@@ -14,7 +14,7 @@ class VideoMetadata(BaseModel):
     was_live: bool = Field(
         description="True if the video was a live stream that has ended"
     )
-    availability: Literal["public", "unlisted", "private", "needs_auth"] = Field(
+    availability: Literal["public", "unlisted"] = Field(
         description="Platform-reported availability status"
     )
     age_limit: int = Field(
@@ -26,10 +26,10 @@ class VideoMetadata(BaseModel):
 
 
 class TranscriptSegment(BaseModel):
-    """A timestamped chunk of transcript text from a speech-to-text source."""
+    """A timestamped chunk of text."""
 
-    start: float = Field(ge=0.0, description="Start time in seconds")
-    end: float = Field(ge=0.0, description="End time in seconds")
+    start_time: float = Field(ge=0.0, description="Start time in seconds")
+    end_time: float = Field(gt=0.0, description="End time in seconds")
     text: str = Field(description="Spoken text in this segment")
 
 
@@ -40,8 +40,8 @@ class OutlineNode(BaseModel):
         description="Stable identifier used to anchor flashcards and citations"
     )
     title: str = Field(description="Human-readable section title")
-    start_ts: float = Field(ge=0.0, description="Start timestamp in seconds")
-    end_ts: float = Field(ge=0.0, description="End timestamp in seconds")
+    start_time: float = Field(ge=0.0, description="Start timestamp in seconds")
+    end_time: float = Field(gt=0.0, description="End timestamp in seconds")
     level: Literal["chapter", "section", "topic"] = Field(
         description="Depth of this node in the outline hierarchy"
     )
@@ -58,8 +58,12 @@ class Outline(BaseModel):
 
     video_id: str = Field(description="YouTube video ID this outline belongs to")
     nodes: list[OutlineNode] = Field(description="Top-level outline nodes")
+
+
+class VideoAnalysis(BaseModel):
+    outline: Outline
     inferred_category: Literal["stem", "humanities", "social", "other"] = Field(
-        description="Content category inferred from the transcript"
+        description="Content category inferred from the associated transcript"
     )
     is_lecture_confidence: float = Field(
         ge=0.0,
@@ -72,25 +76,23 @@ class Outline(BaseModel):
     recommended_temperature: float = Field(
         ge=0.0,
         le=1.0,
-        description="Suggested sampling temperature for downstream agents based on content formality",
+        description="Suggested sampling temperature for downstream agents based on content category",
     )
 
 
 class Citation(BaseModel):
-    """A verbatim excerpt from the transcript anchored to a timestamp range."""
+    """A verbatim excerpt from a transcript anchored to a timestamp range."""
 
     section_id: str = Field(
         description="ID of the OutlineNode this citation falls within"
     )
-    start_ts: float = Field(ge=0.0, description="Start timestamp in seconds")
-    end_ts: float = Field(ge=0.0, description="End timestamp in seconds")
-    quote: str = Field(
-        max_length=500, description="Verbatim transcript excerpt, at most 25 words"
-    )
+    start_time: float = Field(ge=0.0, description="Start timestamp in seconds")
+    end_time: float = Field(gt=0.0, description="End timestamp in seconds")
+    quote: str = Field(max_length=500, description="Verbatim transcript excerpt")
 
 
 class Flashcard(BaseModel):
-    """A single question-answer flashcard anchored to a section of the video."""
+    """A single question-answer pair anchored to a section of a video."""
 
     question: str = Field(description="The question side of the flashcard")
     answer: str = Field(description="The answer side of the flashcard")
@@ -100,21 +102,17 @@ class Flashcard(BaseModel):
     )
 
 
-SummaryDepth = Literal["ninety_seconds", "five_minutes", "full"]
-
-
 class Summary(BaseModel):
-    """A prose summary of the video at a specific depth."""
+    """A prose summary of a video at a specific depth."""
 
-    depth: SummaryDepth = Field(description="Summary length tier")
-    text: str = Field(description="Summary prose in English")
-    section_anchors: list[str] = Field(
-        description="OutlineNode IDs covered by this summary"
+    depth: Literal["ninety_seconds", "five_minutes", "full"] = Field(
+        description="Summary length tier"
     )
+    text: str = Field(description="Summary prose in English")
 
 
 class StudyPack(BaseModel):
-    """Complete study material generated for a video: summaries and flashcards."""
+    """Complete study material (summaries and flashcards) for a video."""
 
     video_id: str = Field(description="YouTube video ID this study pack belongs to")
     outline: Outline = Field(
@@ -161,11 +159,10 @@ class ErrorResponse(BaseModel):
         "livestream",
         "private",
         "age_restricted",
-        "music_category",
         "audio_too_poor",
         "not_a_lecture",
         "rate_limited",
         "not_found",
         "internal_error",
-    ] = Field(description="Machine-readable error code")
-    detail: str = Field(description="Human-readable explanation of the error")
+    ] = Field(description="Error code")
+    detail: str = Field(description="User-facing explanation of the error")

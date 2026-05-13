@@ -8,7 +8,3 @@ class QARequest(BaseModel):
     question: str = Field(
         min_length=1, description="Natural language question about the video content"
     )
-    session_id: str | None = Field(
-        default=None,
-        description="Session cookie value for conversation history continuity; omit to start a new session",
-    )
