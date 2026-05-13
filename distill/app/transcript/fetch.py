@@ -60,8 +60,8 @@ async def _try_youtube(video_id: str) -> TranscriptResult | None:
 
         segments = [
             TranscriptSegment(
-                start=float(entry["start"]),
-                end=float(entry["start"] + entry["duration"]),
+                start_time=float(entry["start"]),
+                end_time=float(entry["start"] + entry["duration"]),
                 text=str(entry["text"]),
             )
             for entry in cast(list[dict], raw)
@@ -150,7 +150,11 @@ def _extract_audio_url_sync(video_url: str) -> str:
         "noplaylist": True,
         "js_runtimes": {"node": {"path": settings.yt_dlp_node_path}},
         "remote_components": ["ejs:github"],
-        **({"cookiefile": settings.youtube_cookies_path} if settings.youtube_cookies_path else {}),
+        **(
+            {"cookiefile": settings.youtube_cookies_path}
+            if settings.youtube_cookies_path
+            else {}
+        ),
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore[arg-type]
@@ -177,7 +181,7 @@ def _segments_to_vtt(segments: list[TranscriptSegment]) -> str:
     lines = ["WEBVTT", ""]
     for segment in segments:
         lines.append(
-            f"{_seconds_to_vtt_time(segment.start)} --> {_seconds_to_vtt_time(segment.end)}"
+            f"{_seconds_to_vtt_time(segment.start_time)} --> {_seconds_to_vtt_time(segment.end_time)}"
         )
         lines.append(segment.text)
         lines.append("")

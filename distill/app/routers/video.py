@@ -6,7 +6,7 @@ from agents.outline import run_outline
 from agents.study_pack import run_study_pack
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
-from models.domain import Flashcard, Outline, StudyPack, Summary
+from models.domain import Flashcard, Outline, StudyPack, Summary, VideoAnalysis
 from models.requests.video import VideoIngestRequest
 from models.responses.video import VideoIngestResponse, VideoStudyPackResponse
 from sqlalchemy.exc import IntegrityError
@@ -76,8 +76,8 @@ async def submit_video(
             raise HTTPException(
                 status_code=500, detail="Outline missing for persisted video"
             )
-        outline = Outline.model_validate(outline_row.outline)
-        study_pack = _study_pack_from_db(pack_row, outline)
+        analysis = VideoAnalysis.model_validate(outline_row.outline)
+        study_pack = _study_pack_from_db(pack_row, analysis.outline)
         return VideoStudyPackResponse(video_id=video_id, study_pack=study_pack)
 
     scope = f"cookie:{get_session_id(request)}"
@@ -86,7 +86,10 @@ async def submit_video(
     except RateLimitExceeded as exc:
         raise HTTPException(
             status_code=429,
-            detail={**exc.error.model_dump(), "retry_after_seconds": exc.retry_after_seconds},
+            detail={
+                **exc.error.model_dump(),
+                "retry_after_seconds": exc.retry_after_seconds,
+            },
         )
 
     video = session.get(orm.Video, video_id)
@@ -124,8 +127,8 @@ async def get_video(
     outline_row = session.get(orm.Outline, video_id)
     if pack_row is None or outline_row is None:
         raise HTTPException(status_code=404, detail="Video not found")
-    outline = Outline.model_validate(outline_row.outline)
-    study_pack = _study_pack_from_db(pack_row, outline)
+    analysis = VideoAnalysis.model_validate(outline_row.outline)
+    study_pack = _study_pack_from_db(pack_row, analysis.outline)
     return VideoStudyPackResponse(video_id=video_id, study_pack=study_pack)
 
 
@@ -151,8 +154,8 @@ async def _pipeline_stream(job_id: str):
             pack_row = session.get(orm.StudyPack, video_id)
             outline_row = session.get(orm.Outline, video_id)
         if pack_row and outline_row:
-            outline = Outline.model_validate(outline_row.outline)
-            study_pack = _study_pack_from_db(pack_row, outline)
+            analysis = VideoAnalysis.model_validate(outline_row.outline)
+            study_pack = _study_pack_from_db(pack_row, analysis.outline)
             yield sse_event("study-pack-done", {"study_pack": study_pack.model_dump()})
         yield sse_event("done", {"video_id": video_id})
         return
@@ -214,30 +217,28 @@ async def _pipeline_stream(job_id: str):
             outline_row = session.get(orm.Outline, video_id)
 
         if outline_row is None:
-            outline = await run_outline(vtt_text, video_id, job_id)
+            analysis = await run_outline(vtt_text, video_id, job_id)
             with SessionLocal() as session:
                 session.add(
                     orm.Outline(
                         video_id=video_id,
-                        outline=outline.model_dump(),
-                        category=outline.inferred_category,
-                        recommended_temperature=outline.recommended_temperature,
-                        is_lecture_confidence=outline.is_lecture_confidence,
+                        outline=analysis.model_dump(),
+                        category=analysis.inferred_category,
                     )
                 )
                 session.commit()
         else:
-            outline = Outline.model_validate(outline_row.outline)
+            analysis = VideoAnalysis.model_validate(outline_row.outline)
 
-        yield sse_event("outline-done", {"outline": outline.model_dump()})
+        yield sse_event("outline-done", {"outline": analysis.outline.model_dump()})
 
         with SessionLocal() as session:
             pack_row = session.get(orm.StudyPack, video_id)
 
         if pack_row is None:
-            study_pack = await run_study_pack(vtt_text, outline, video_id, job_id)
+            study_pack = await run_study_pack(vtt_text, analysis, video_id, job_id)
             generation_temperature = min(
-                max(outline.recommended_temperature, 0.0), _MAX_TEMPERATURE
+                max(analysis.recommended_temperature, 0.0), _MAX_TEMPERATURE
             )
             with SessionLocal() as session:
                 session.add(
@@ -255,7 +256,7 @@ async def _pipeline_stream(job_id: str):
                 )
                 session.commit()
         else:
-            study_pack = _study_pack_from_db(pack_row, outline)
+            study_pack = _study_pack_from_db(pack_row, analysis.outline)
 
         yield sse_event("study-pack-done", {"study_pack": study_pack.model_dump()})
 

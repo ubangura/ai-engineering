@@ -163,8 +163,8 @@ def _extract_citations_from_text(
         citations.append(
             Citation(
                 section_id="",
-                start_ts=float(start_seconds),
-                end_ts=float(start_seconds + 10),
+                start_time=float(start_seconds),
+                end_time=float(start_seconds + 10),
                 quote=_find_quote_near(timestamped_transcript, float(start_seconds)),
             )
         )

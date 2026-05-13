@@ -47,8 +47,8 @@ def to_segments(response: dict) -> list[TranscriptSegment]:
         return []
     return [
         TranscriptSegment(
-            start=utterance["start"],
-            end=utterance["end"],
+            start_time=utterance["start"],
+            end_time=utterance["end"],
             text=utterance["transcript"],
         )
         for utterance in utterances

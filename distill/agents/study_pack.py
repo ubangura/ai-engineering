@@ -2,7 +2,7 @@ import functools
 import json
 import os
 
-from models.domain import Outline, StudyPack
+from models.domain import StudyPack, VideoAnalysis
 
 from agents.messaging import complete
 
@@ -34,17 +34,15 @@ def _clamp_temperature(raw: float) -> float:
 
 
 async def run_study_pack(
-    transcript: str, outline: Outline, video_id: str, _job_id: str = ""
+    transcript: str, video_analysis: VideoAnalysis, video_id: str, _job_id: str = ""
 ) -> StudyPack:
     system_prompt = (
         _load_system_prompt()
         + "\n\n"
-        + _load_category_prompt(outline.inferred_category)
+        + _load_category_prompt(video_analysis.inferred_category)
     )
-    temperature = _clamp_temperature(outline.recommended_temperature)
-    instruction = (
-        f"Outline JSON:\n{outline.model_dump_json()}\n\nProduce a complete StudyPack."
-    )
+    temperature = _clamp_temperature(video_analysis.recommended_temperature)
+    instruction = f"Outline JSON:\n{video_analysis.outline.model_dump_json()}\n\nProduce a complete StudyPack."
 
     for attempt in range(_MAX_ATTEMPTS):
         raw = await complete(
@@ -60,7 +58,7 @@ async def run_study_pack(
         try:
             data = json.loads(raw)
             data["video_id"] = video_id
-            data["outline"] = outline.model_dump()
+            data["outline"] = video_analysis.outline.model_dump()
             return StudyPack.model_validate(data)
         except Exception as exc:
             if attempt == _MAX_ATTEMPTS - 1:

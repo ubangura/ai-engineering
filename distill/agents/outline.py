@@ -3,7 +3,7 @@ import json
 import os
 
 from app.transcript.gate import GateRejection
-from models.domain import ErrorResponse, Outline
+from models.domain import ErrorResponse, VideoAnalysis
 
 from agents.messaging import complete
 
@@ -24,7 +24,7 @@ def _load_system_prompt() -> str:
 
 async def run_outline(
     timestamped_transcript: str, video_id: str, _job_id: str = ""
-) -> Outline:
+) -> VideoAnalysis:
     instruction = "Produce a complete Outline for this transcript."
     last_exc: Exception | None = None
 
@@ -40,22 +40,21 @@ async def run_outline(
         )
         try:
             data = json.loads(raw)
-            if "outline" in data and "nodes" not in data:
-                data["nodes"] = data.pop("outline")
-            data.setdefault("video_id", video_id)
-            outline = Outline.model_validate(data)
+            nodes_data = data.pop("outline", None) or data.pop("nodes", None)
+            data["outline"] = {"video_id": video_id, "nodes": nodes_data}
+            analysis = VideoAnalysis.model_validate(data)
         except Exception as exc:
             last_exc = exc
             continue
 
-        if outline.is_lecture_confidence < _NON_LECTURE_THRESHOLD:
+        if analysis.is_lecture_confidence < _NON_LECTURE_THRESHOLD:
             raise GateRejection(
                 ErrorResponse(
                     code="not_a_lecture",
                     detail="This doesn't appear to be lecture content. Try a recorded class, tutorial, or academic talk.",
                 )
             )
-        return outline
+        return analysis
 
     raise GateRejection(
         ErrorResponse(
