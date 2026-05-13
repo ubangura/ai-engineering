@@ -57,8 +57,6 @@ class Outline(Base):
     __tablename__ = "outlines"
     __table_args__ = (
         CheckConstraint("category IN ('stem','humanities','social','other')"),
-        CheckConstraint("recommended_temperature BETWEEN 0.0 AND 1.0"),
-        CheckConstraint("is_lecture_confidence BETWEEN 0.0 AND 1.0"),
     )
 
     video_id: Mapped[str] = mapped_column(
@@ -68,8 +66,6 @@ class Outline(Base):
     )
     outline: Mapped[dict] = mapped_column(JSONB, nullable=False)
     category: Mapped[str] = mapped_column(Text, nullable=False)
-    recommended_temperature: Mapped[float] = mapped_column(Float, nullable=False)
-    is_lecture_confidence: Mapped[float] = mapped_column(Float, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
