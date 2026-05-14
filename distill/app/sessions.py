@@ -15,18 +15,8 @@ _signer = TimestampSigner(settings.session_cookie_secret.get_secret_value())
 
 
 def get_session_id(request: Request) -> str:
-    """Return the session ID stashed by SessionMiddleware, falling back to the cookie."""
-    if hasattr(request.state, "session_id"):
-        return request.state.session_id
-    raw = request.cookies.get(_COOKIE_NAME)
-    if raw:
-        try:
-            return _signer.unsign(
-                raw, max_age=int(_COOKIE_MAX_AGE.total_seconds())
-            ).decode()
-        except BadSignature:
-            pass
-    return _mint_session_id()
+    """Return the session ID stashed by SessionMiddleware."""
+    return request.state.session_id
 
 
 def _mint_session_id() -> str:
