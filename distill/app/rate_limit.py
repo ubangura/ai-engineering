@@ -61,7 +61,7 @@ def _rate_limit_message(bucket: str, limit: int) -> str:
     messages = {
         "video": f"You can process up to {limit} new videos per hour. Please wait until {_time_of_reset()}.",
         "qa": f"This conversation has reached {limit} Q&A turns for this hour. Please wait until {_time_of_reset()}.",
-        "translate": f"Up to {limit} language translations per video are supported.",
+        "translate": f"You can do {limit} translations per hour. Please wait until {_time_of_reset()}.",
     }
     return messages.get(bucket, "Rate limit reached. Please try again later.")
 
