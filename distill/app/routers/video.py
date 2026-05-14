@@ -1,11 +1,12 @@
 import logging
 import uuid
+from collections.abc import AsyncIterable
 from typing import Annotated
 
 from agents.outline import run_outline
 from agents.study_pack import run_study_pack
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import StreamingResponse
+from fastapi.sse import EventSourceResponse, ServerSentEvent
 from models.domain import Flashcard, Outline, StudyPack, Summary
 from models.requests.video import VideoIngestRequest
 from models.responses.video import VideoIngestResponse, VideoStudyPackResponse
@@ -16,7 +17,6 @@ from app.db import SessionLocal, get_session
 from app.db import models as orm
 from app.rate_limit import RateLimitExceeded, check_and_increment
 from app.sessions import get_session_id
-from app.sse import keepalive_stream, sse_event
 from app.transcript.fetch import fetch_transcript
 from app.transcript.gate import GateRejection, run_gate
 
@@ -125,37 +125,41 @@ async def get_video(
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
 
 
-@sse_router.get("/sse/video/{job_id}")
+@sse_router.get("/sse/video/{job_id}", response_class=EventSourceResponse)
 async def sse_video(job_id: str):
-    return StreamingResponse(
-        keepalive_stream(_pipeline_stream(job_id)),
-        media_type="text/event-stream",
-    )
+    async for event in _pipeline_stream(job_id):
+        yield event
 
 
 async def _pipeline_stream(job_id: str):
     with SessionLocal() as session:
         job = session.get(orm.Job, uuid.UUID(job_id))
         if job is None:
-            yield sse_event("error", {"code": "not_found", "detail": "Job not found"})
+            yield ServerSentEvent(
+                data={"code": "not_found", "detail": "Job not found"}, event="error"
+            )
             return
         video_id = job.video_id
-        status = job.status
+        job_status = job.status
 
-    if status == "done":
+    if job_status == "done":
         with SessionLocal() as session:
             pack_row = session.get(orm.StudyPack, video_id)
         if pack_row:
             study_pack = _study_pack_from_db(pack_row)
-            yield sse_event("study-pack-done", {"study_pack": study_pack.model_dump()})
-        yield sse_event("done", {"video_id": video_id})
+            yield ServerSentEvent(
+                data={"study_pack": study_pack.model_dump()}, event="study-pack-done"
+            )
+        yield ServerSentEvent(data={"video": video_id}, event="done")
         return
 
-    if status == "error":
+    if job_status == "error":
         with SessionLocal() as session:
             job = session.get(orm.Job, uuid.UUID(job_id))
             code = (job.error_code or "internal_error") if job else "internal_error"
-        yield sse_event("error", {"code": code, "detail": "Processing failed"})
+        yield ServerSentEvent(
+            data={"code": code, "detail": "Processing failed"}, event="error"
+        )
         return
 
     _update_job_status(job_id, "running")
@@ -167,13 +171,13 @@ async def _pipeline_stream(job_id: str):
             duration = video_row.duration_seconds if video_row else 0
             categories = video_row.metadata_.get("categories", []) if video_row else []
 
-        yield sse_event(
-            "metadata-gate-pass",
-            {
+        yield ServerSentEvent(
+            data={
                 "title": title,
                 "duration": duration,
                 "category": categories[0] if categories else None,
             },
+            event="metadata-gate-pass",
         )
 
         with SessionLocal() as session:
@@ -194,14 +198,17 @@ async def _pipeline_stream(job_id: str):
                     )
                 )
                 session.commit()
-            yield sse_event("transcript-source", {"source": result.source})
-            yield sse_event(
-                "transcript-fetched",
-                {
+            yield ServerSentEvent(
+                data={"source": result.source}, event="transcript-source"
+            )
+            yield ServerSentEvent(
+                data={
                     "segment_count": len(result.segments),
                     "mean_confidence": result.mean_confidence,
                 },
+                event="transcript-fetched",
             )
+
             vtt_text = result.vtt_text
 
         with SessionLocal() as session:
@@ -209,10 +216,10 @@ async def _pipeline_stream(job_id: str):
 
         if pack_row:
             study_pack = _study_pack_from_db(pack_row)
-            yield sse_event("outline-done", {"outline": pack_row.outline})
+            yield ServerSentEvent(data={"outline": pack_row.outline}, event="outline-done")
         else:
             analysis = await run_outline(vtt_text, video_id, job_id)
-            yield sse_event("outline-done", {"outline": analysis.outline.model_dump()})
+            yield ServerSentEvent(data={"outline": analysis.outline.model_dump()}, event="outline-done")
             study_pack = await run_study_pack(vtt_text, analysis, video_id, job_id)
 
             with SessionLocal() as session:
@@ -232,21 +239,18 @@ async def _pipeline_stream(job_id: str):
                 )
                 session.commit()
 
-        yield sse_event("study-pack-done", {"study_pack": study_pack.model_dump()})
+        yield ServerSentEvent(data={"study_pack": study_pack.model_dump()}, event="study-pack-done")
 
         _update_job_status(job_id, "done")
-        yield sse_event("done", {"video_id": video_id})
+        yield ServerSentEvent(data={"video_id": video_id}, event="done")
 
     except GateRejection as exc:
-        yield sse_event("error", exc.error.model_dump())
+        yield ServerSentEvent(data=exc.error.model_dump(), event="error")
         _update_job_status(job_id, "error", exc.error.code)
 
     except Exception:
         logger.exception(
             "pipeline_error", extra={"job_id": job_id, "video_id": video_id}
         )
-        yield sse_event(
-            "error",
-            {"code": "internal_error", "detail": "An unexpected error occurred"},
-        )
+        yield ServerSentEvent(data={"code": "internal_error", "detail": "An unexpected error occurred"}, event="error")
         _update_job_status(job_id, "error", "internal_error")

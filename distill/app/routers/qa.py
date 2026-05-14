@@ -1,10 +1,10 @@
-import json
+from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from agents.qa import run_qa
 from anthropic.types import MessageParam
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.sse import EventSourceResponse, ServerSentEvent
 from models.requests.qa import QARequest
 from sqlalchemy.orm import Session
 
@@ -12,12 +12,11 @@ from app.db import SessionLocal, get_session
 from app.db import models as orm
 from app.rate_limit import RateLimitExceeded, check_and_increment
 from app.sessions import get_session_id
-from app.sse import keepalive_stream
 
 router = APIRouter()
 
 
-@router.post("/api/qa")
+@router.post("/api/qa", response_class=EventSourceResponse)
 async def ask_question(
     body: QARequest,
     request: Request,
@@ -46,10 +45,8 @@ async def ask_question(
     history = _turns_to_history(qa_row.turns if qa_row else [])
     transcript_vtt = transcript_row.vtt_text
 
-    return StreamingResponse(
-        keepalive_stream(_qa_stream(body, session_id, transcript_vtt, history)),
-        media_type="text/event-stream",
-    )
+    async for event in _qa_stream(body, session_id, transcript_vtt, history):
+        yield event
 
 
 def _turns_to_history(turns: list[dict]) -> list[MessageParam]:
@@ -65,22 +62,18 @@ async def _qa_stream(
     session_id: str,
     transcript_vtt: str,
     history: list[MessageParam],
-):
+) -> AsyncGenerator[ServerSentEvent, None]:
     answer_text = ""
-    async for chunk in run_qa(
+    async for event in run_qa(
         transcript_vtt,
         history,
         body.question,
         body.video_id,
         session_id,
     ):
-        yield chunk
-        if chunk.startswith("event: done\n"):
-            try:
-                data = json.loads(chunk.split("\ndata: ", 1)[1].rstrip())
-                answer_text = data.get("answer", "")
-            except (IndexError, json.JSONDecodeError):
-                pass
+        yield event
+        if event.event == "done" and isinstance(event.data, dict):
+            answer_text = event.data.get("answer", "")
 
     _persist_turn(body.video_id, session_id, body.question, answer_text)
 

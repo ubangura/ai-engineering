@@ -7,7 +7,7 @@ from collections.abc import AsyncGenerator
 
 from anthropic.types import MessageParam
 from app.clients.anthropic import get_anthropic_client
-from app.sse import sse_event
+from fastapi.sse import ServerSentEvent
 from models.domain import Citation, QAResponse
 from tools.web_search import WEB_SEARCH_TOOL
 
@@ -39,7 +39,7 @@ async def run_qa(
     video_id: str,
     session_id: str,
     response_language: str | None = None,
-) -> AsyncGenerator[str, None]:
+) -> AsyncGenerator[ServerSentEvent, None]:
     client = get_anthropic_client()
     messages = _build_messages(
         timestamped_transcript, history, question, response_language
@@ -65,13 +65,15 @@ async def run_qa(
             if event.type == "content_block_delta" and event.delta.type == "text_delta":
                 chunk = event.delta.text
                 answer_parts.append(chunk)
-                yield sse_event("delta", {"text": chunk})
+                yield ServerSentEvent(data={"text": chunk}, event="delta")
             elif (
                 event.type == "content_block_start"
                 and event.content_block.type == "tool_use"
                 and event.content_block.name == "web_search"
             ):
-                yield sse_event("tool-use", {"tool": "web_search", "query": ""})
+                yield ServerSentEvent(
+                    data={"tool": "web_search", "query": ""}, event="tool-use"
+                )
 
         final_message = await stream.get_final_message()
 
@@ -94,15 +96,15 @@ async def run_qa(
     citations = _extract_citations_from_text(answer_text, timestamped_transcript)
 
     for citation in citations:
-        yield sse_event("citation", {"citation": citation.model_dump()})
+        yield ServerSentEvent(
+            data={"citation": citation.model_dump()}, event="citation"
+        )
 
-    yield sse_event(
-        "done",
-        QAResponse(
-            answer=answer_text,
-            citations=citations,
-            web_sources=[],
+    yield ServerSentEvent(
+        data=QAResponse(
+            answer=answer_text, citations=citations, web_sources=[]
         ).model_dump(),
+        event="done",
     )
 
 
