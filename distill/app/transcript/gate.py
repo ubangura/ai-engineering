@@ -44,7 +44,7 @@ async def run_gate(url: str) -> VideoMetadata:
     url = url.strip()
 
     video_id = _extract_video_id(url)
-    if not video_id:
+    if video_id is None:
         raise GateRejection(
             ErrorResponse(
                 code="not_found",
@@ -91,13 +91,7 @@ async def _fetch_info(url: str) -> dict:
                         detail="This video requires sign-in to view.",
                     )
                 ) from exc
-            if attempt == 2:
-                raise GateRejection(
-                    ErrorResponse(
-                        code="internal_error",
-                        detail="Couldn't reach YouTube. Please try again in a moment.",
-                    )
-                ) from exc
+
             await asyncio.sleep(2**attempt)
 
     raise GateRejection(
@@ -157,19 +151,7 @@ def _validate(video_id: str, info: dict) -> VideoMetadata:
         uploader=info.get("uploader", ""),
         is_live=is_live,
         was_live=bool(info.get("was_live")),
-        availability=_normalize_availability(availability),
+        availability="public" if availability in ("public", "") else "unlisted",
         age_limit=age_limit,
         categories=info.get("categories", []),
-    )
-
-
-def _normalize_availability(
-    raw: str,
-) -> Literal["public", "unlisted"]:
-    if raw in ("public", ""):
-        return "public"
-    if raw == "unlisted":
-        return "unlisted"
-    raise GateRejection(
-        ErrorResponse(code="private", detail="This video's availability is unknown.")
     )
