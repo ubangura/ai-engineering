@@ -1,6 +1,5 @@
 import logging
 import uuid
-from collections.abc import AsyncIterable
 from typing import Annotated
 
 from agents.outline import run_outline
@@ -148,7 +147,7 @@ async def _pipeline_stream(job_id: str):
         if pack_row:
             study_pack = _study_pack_from_db(pack_row)
             yield ServerSentEvent(
-                data={"study_pack": study_pack.model_dump()}, event="study-pack-done"
+                data={"study_pack": study_pack}, event="study-pack-done"
             )
         yield ServerSentEvent(data={"video": video_id}, event="done")
         return
@@ -216,10 +215,14 @@ async def _pipeline_stream(job_id: str):
 
         if pack_row:
             study_pack = _study_pack_from_db(pack_row)
-            yield ServerSentEvent(data={"outline": pack_row.outline}, event="outline-done")
+            yield ServerSentEvent(
+                data={"outline": pack_row.outline}, event="outline-done"
+            )
         else:
             analysis = await run_outline(vtt_text, video_id, job_id)
-            yield ServerSentEvent(data={"outline": analysis.outline.model_dump()}, event="outline-done")
+            yield ServerSentEvent(
+                data={"outline": analysis.outline}, event="outline-done"
+            )
             study_pack = await run_study_pack(vtt_text, analysis, video_id, job_id)
 
             with SessionLocal() as session:
@@ -228,29 +231,27 @@ async def _pipeline_stream(job_id: str):
                         video_id=video_id,
                         category=analysis.inferred_category,
                         outline=analysis.outline.model_dump(),
-                        summaries=[
-                            summary.model_dump() for summary in study_pack.summaries
-                        ],
-                        flashcards=[
-                            flashcard.model_dump()
-                            for flashcard in study_pack.flashcards
-                        ],
+                        summaries=[summary for summary in study_pack.summaries],
+                        flashcards=[flashcard for flashcard in study_pack.flashcards],
                     )
                 )
                 session.commit()
 
-        yield ServerSentEvent(data={"study_pack": study_pack.model_dump()}, event="study-pack-done")
+        yield ServerSentEvent(data={"study_pack": study_pack}, event="study-pack-done")
 
         _update_job_status(job_id, "done")
         yield ServerSentEvent(data={"video_id": video_id}, event="done")
 
     except GateRejection as exc:
-        yield ServerSentEvent(data=exc.error.model_dump(), event="error")
+        yield ServerSentEvent(data=exc.error, event="error")
         _update_job_status(job_id, "error", exc.error.code)
 
     except Exception:
         logger.exception(
             "pipeline_error", extra={"job_id": job_id, "video_id": video_id}
         )
-        yield ServerSentEvent(data={"code": "internal_error", "detail": "An unexpected error occurred"}, event="error")
+        yield ServerSentEvent(
+            data={"code": "internal_error", "detail": "An unexpected error occurred"},
+            event="error",
+        )
         _update_job_status(job_id, "error", "internal_error")

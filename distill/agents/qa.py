@@ -96,14 +96,10 @@ async def run_qa(
     citations = _extract_citations_from_text(answer_text, timestamped_transcript)
 
     for citation in citations:
-        yield ServerSentEvent(
-            data={"citation": citation.model_dump()}, event="citation"
-        )
+        yield ServerSentEvent(data={"citation": citation}, event="citation")
 
     yield ServerSentEvent(
-        data=QAResponse(
-            answer=answer_text, citations=citations, web_sources=[]
-        ).model_dump(),
+        data=QAResponse(answer=answer_text, citations=citations, web_sources=[]),
         event="done",
     )
 
@@ -118,7 +114,7 @@ def _build_messages(
     if response_language:
         user_text += f"\n\nRespond in language: {response_language}"
 
-    messages = [
+    messages: list[MessageParam] = [
         {
             "role": "user",
             "content": [
