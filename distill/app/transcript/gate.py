@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Literal
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import yt_dlp
