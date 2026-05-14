@@ -6,7 +6,7 @@ from agents.outline import run_outline
 from agents.study_pack import run_study_pack
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
-from models.domain import Flashcard, Outline, StudyPack, Summary, VideoAnalysis
+from models.domain import Flashcard, Outline, StudyPack, Summary
 from models.requests.video import VideoIngestRequest
 from models.responses.video import VideoIngestResponse, VideoStudyPackResponse
 from sqlalchemy.exc import IntegrityError
@@ -24,17 +24,15 @@ router = APIRouter()
 sse_router = APIRouter()
 logger = logging.getLogger(__name__)
 
-_MAX_TEMPERATURE = 0.7
-
 
 def _youtube_url(video_id: str) -> str:
     return f"https://www.youtube.com/watch?v={video_id}"
 
 
-def _study_pack_from_db(pack_row: orm.StudyPack, outline: Outline) -> StudyPack:
+def _study_pack_from_db(pack_row: orm.StudyPack) -> StudyPack:
     return StudyPack(
         video_id=pack_row.video_id,
-        outline=outline,
+        outline=Outline.model_validate(pack_row.outline),
         summaries=[Summary(**summary) for summary in pack_row.summaries],
         flashcards=[Flashcard(**flashcard) for flashcard in pack_row.flashcards],
     )
@@ -70,14 +68,8 @@ async def submit_video(
     video_id = metadata.video_id
 
     pack_row = session.get(orm.StudyPack, video_id)
-    if pack_row is not None:
-        outline_row = session.get(orm.Outline, video_id)
-        if outline_row is None:
-            raise HTTPException(
-                status_code=500, detail="Outline missing for persisted video"
-            )
-        analysis = VideoAnalysis.model_validate(outline_row.outline)
-        study_pack = _study_pack_from_db(pack_row, analysis.outline)
+    if pack_row:
+        study_pack = _study_pack_from_db(pack_row)
         return VideoStudyPackResponse(video_id=video_id, study_pack=study_pack)
 
     scope = f"cookie:{get_session_id(request)}"
@@ -124,12 +116,10 @@ async def get_video(
     session: Annotated[Session, Depends(get_session)],
 ):
     pack_row = session.get(orm.StudyPack, video_id)
-    outline_row = session.get(orm.Outline, video_id)
-    if pack_row is None or outline_row is None:
-        raise HTTPException(status_code=404, detail="Video not found")
-    analysis = VideoAnalysis.model_validate(outline_row.outline)
-    study_pack = _study_pack_from_db(pack_row, analysis.outline)
-    return VideoStudyPackResponse(video_id=video_id, study_pack=study_pack)
+    if pack_row:
+        study_pack = _study_pack_from_db(pack_row)
+        return VideoStudyPackResponse(video_id=video_id, study_pack=study_pack)
+    raise HTTPException(status_code=404, detail="Video not found")
 
 
 @sse_router.get("/sse/video/{job_id}")
@@ -152,10 +142,8 @@ async def _pipeline_stream(job_id: str):
     if status == "done":
         with SessionLocal() as session:
             pack_row = session.get(orm.StudyPack, video_id)
-            outline_row = session.get(orm.Outline, video_id)
-        if pack_row and outline_row:
-            analysis = VideoAnalysis.model_validate(outline_row.outline)
-            study_pack = _study_pack_from_db(pack_row, analysis.outline)
+        if pack_row:
+            study_pack = _study_pack_from_db(pack_row)
             yield sse_event("study-pack-done", {"study_pack": study_pack.model_dump()})
         yield sse_event("done", {"video_id": video_id})
         return
@@ -188,7 +176,9 @@ async def _pipeline_stream(job_id: str):
         with SessionLocal() as session:
             transcript_row = session.get(orm.Transcript, video_id)
 
-        if transcript_row is None:
+        if transcript_row:
+            vtt_text = transcript_row.vtt_text
+        else:
             result = await fetch_transcript(video_id, _youtube_url(video_id))
             with SessionLocal() as session:
                 session.add(
@@ -210,40 +200,24 @@ async def _pipeline_stream(job_id: str):
                 },
             )
             vtt_text = result.vtt_text
-        else:
-            vtt_text = transcript_row.vtt_text
-
-        with SessionLocal() as session:
-            outline_row = session.get(orm.Outline, video_id)
-
-        if outline_row is None:
-            analysis = await run_outline(vtt_text, video_id, job_id)
-            with SessionLocal() as session:
-                session.add(
-                    orm.Outline(
-                        video_id=video_id,
-                        outline=analysis.model_dump(),
-                        category=analysis.inferred_category,
-                    )
-                )
-                session.commit()
-        else:
-            analysis = VideoAnalysis.model_validate(outline_row.outline)
-
-        yield sse_event("outline-done", {"outline": analysis.outline.model_dump()})
 
         with SessionLocal() as session:
             pack_row = session.get(orm.StudyPack, video_id)
 
-        if pack_row is None:
+        if pack_row:
+            study_pack = _study_pack_from_db(pack_row)
+            yield sse_event("outline-done", {"outline": pack_row.outline})
+        else:
+            analysis = await run_outline(vtt_text, video_id, job_id)
+            yield sse_event("outline-done", {"outline": analysis.outline.model_dump()})
             study_pack = await run_study_pack(vtt_text, analysis, video_id, job_id)
-            generation_temperature = min(
-                max(analysis.recommended_temperature, 0.0), _MAX_TEMPERATURE
-            )
+
             with SessionLocal() as session:
                 session.add(
                     orm.StudyPack(
                         video_id=video_id,
+                        category=analysis.inferred_category,
+                        outline=analysis.outline.model_dump(),
                         summaries=[
                             summary.model_dump() for summary in study_pack.summaries
                         ],
@@ -251,12 +225,9 @@ async def _pipeline_stream(job_id: str):
                             flashcard.model_dump()
                             for flashcard in study_pack.flashcards
                         ],
-                        generation_temperature=generation_temperature,
                     )
                 )
                 session.commit()
-        else:
-            study_pack = _study_pack_from_db(pack_row, analysis.outline)
 
         yield sse_event("study-pack-done", {"study_pack": study_pack.model_dump()})
 

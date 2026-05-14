@@ -34,20 +34,13 @@ async def translate(
     if pack_row is None:
         raise HTTPException(status_code=404, detail="Video not found")
 
-    outline_row = session.get(orm.Outline, body.video_id)
-    if outline_row is None:
-        raise HTTPException(status_code=404, detail="Outline not found")
-
-    outline_titles = _flatten_outline_titles(outline_row.outline["nodes"])
+    outline_titles = _flatten_outline_titles(pack_row.outline["nodes"])
 
     translation_row = session.get(
         orm.Translation, (body.video_id, body.target_language)
     )
-    translated_outline_row = session.get(
-        orm.TranslatedOutline, (body.video_id, body.target_language)
-    )
 
-    if translation_row is not None and translated_outline_row is not None:
+    if translation_row:
         return TranslationResponse(
             video_id=body.video_id,
             target_language=body.target_language,
@@ -55,7 +48,7 @@ async def translate(
             flashcards=[
                 Flashcard(**flashcard) for flashcard in translation_row.flashcards
             ],
-            outline_titles=translated_outline_row.outline_titles,
+            outline_titles=translation_row.outline_titles,
         )
 
     scope = f"cookie:{get_session_id(request)}"
@@ -64,7 +57,10 @@ async def translate(
     except RateLimitExceeded as exc:
         raise HTTPException(
             status_code=429,
-            detail={**exc.error.model_dump(), "retry_after_seconds": exc.retry_after_seconds},
+            detail={
+                **exc.error.model_dump(),
+                "retry_after_seconds": exc.retry_after_seconds,
+            },
         )
 
     summaries = [Summary(**summary) for summary in pack_row.summaries]
@@ -73,24 +69,14 @@ async def translate(
         summaries, flashcards, outline_titles, body.target_language, body.video_id
     )
 
-    if translation_row is None:
-        session.add(
-            orm.Translation(
-                video_id=body.video_id,
-                language=body.target_language,
-                summaries=[summary.model_dump() for summary in result.summaries],
-                flashcards=[flashcard.model_dump() for flashcard in result.flashcards],
-            )
+    session.add(
+        orm.Translation(
+            video_id=body.video_id,
+            language=body.target_language,
+            outline_titles=result.outline_titles,
+            summaries=[summary.model_dump() for summary in result.summaries],
+            flashcards=[flashcard.model_dump() for flashcard in result.flashcards],
         )
-
-    if translated_outline_row is None:
-        session.add(
-            orm.TranslatedOutline(
-                video_id=body.video_id,
-                language=body.target_language,
-                outline_titles=result.outline_titles,
-            )
-        )
-
+    )
     session.commit()
     return result

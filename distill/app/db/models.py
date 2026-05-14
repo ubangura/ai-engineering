@@ -53,8 +53,8 @@ class Transcript(Base):
     )
 
 
-class Outline(Base):
-    __tablename__ = "outlines"
+class StudyPack(Base):
+    __tablename__ = "study_packs"
     __table_args__ = (
         CheckConstraint("category IN ('stem','humanities','social','other')"),
     )
@@ -64,24 +64,10 @@ class Outline(Base):
         ForeignKey("videos.video_id", ondelete="CASCADE"),
         primary_key=True,
     )
-    outline: Mapped[dict] = mapped_column(JSONB, nullable=False)
     category: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()")
-    )
-
-
-class StudyPack(Base):
-    __tablename__ = "study_packs"
-
-    video_id: Mapped[str] = mapped_column(
-        Text,
-        ForeignKey("videos.video_id", ondelete="CASCADE"),
-        primary_key=True,
-    )
+    outline: Mapped[dict] = mapped_column(JSONB, nullable=False)
     summaries: Mapped[list] = mapped_column(JSONB, nullable=False)
     flashcards: Mapped[list] = mapped_column(JSONB, nullable=False)
-    generation_temperature: Mapped[float] = mapped_column(Float, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -96,23 +82,9 @@ class Translation(Base):
         primary_key=True,
     )
     language: Mapped[str] = mapped_column(Text, primary_key=True)
+    outline_titles: Mapped[dict] = mapped_column(JSONB, nullable=False)
     summaries: Mapped[list] = mapped_column(JSONB, nullable=False)
     flashcards: Mapped[list] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()")
-    )
-
-
-class TranslatedOutline(Base):
-    __tablename__ = "translated_outlines"
-
-    video_id: Mapped[str] = mapped_column(
-        Text,
-        ForeignKey("videos.video_id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    language: Mapped[str] = mapped_column(Text, primary_key=True)
-    outline_titles: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
