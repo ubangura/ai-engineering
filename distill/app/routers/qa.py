@@ -3,7 +3,7 @@ from typing import Annotated
 
 from agents.qa import run_qa
 from anthropic.types import MessageParam
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from models.requests.qa import QARequest
 from sqlalchemy.orm import Session
@@ -25,7 +25,9 @@ async def ask_question(
 ):
     transcript_row = session.get(orm.Transcript, body.video_id)
     if transcript_row is None:
-        raise HTTPException(status_code=404, detail="Video not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Video not found"
+        )
 
     session_id = get_session_id(request)
     scope = f"cookie:{session_id}"
@@ -33,8 +35,11 @@ async def ask_question(
         check_and_increment(session, "qa", scope)
     except RateLimitExceeded as exc:
         raise HTTPException(
-            status_code=429,
-            detail={**exc.error.model_dump(), "retry_after_seconds": exc.retry_after_seconds},
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                **exc.error.model_dump(),
+                "retry_after_seconds": exc.retry_after_seconds,
+            },
         )
 
     qa_row = session.get(orm.QASession, (body.video_id, session_id))

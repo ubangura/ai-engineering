@@ -4,7 +4,7 @@ from typing import Annotated
 
 from agents.outline import run_outline
 from agents.study_pack import run_study_pack
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from models.domain import Flashcard, Outline, StudyPack, Summary
 from models.requests.video import VideoIngestRequest
@@ -63,7 +63,10 @@ async def submit_video(
     try:
         metadata = await run_gate(str(body.url))
     except GateRejection as exc:
-        raise HTTPException(status_code=422, detail=exc.error.model_dump())
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=exc.error.model_dump(),
+        )
 
     video_id = metadata.video_id
 
@@ -77,7 +80,7 @@ async def submit_video(
         check_and_increment(session, "video", scope)
     except RateLimitExceeded as exc:
         raise HTTPException(
-            status_code=429,
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={
                 **exc.error.model_dump(),
                 "retry_after_seconds": exc.retry_after_seconds,
@@ -106,7 +109,7 @@ async def submit_video(
     session.add(orm.Job(job_id=uuid.UUID(job_id), video_id=video_id))
     session.commit()
 
-    response.status_code = 202
+    response.status_code = status.HTTP_202_ACCEPTED
     return VideoIngestResponse(job_id=job_id, video_id=video_id)
 
 
@@ -119,7 +122,7 @@ async def get_video(
     if pack_row:
         study_pack = _study_pack_from_db(pack_row)
         return VideoStudyPackResponse(video_id=video_id, study_pack=study_pack)
-    raise HTTPException(status_code=404, detail="Video not found")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
 
 
 @sse_router.get("/sse/video/{job_id}")
