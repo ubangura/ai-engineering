@@ -8,10 +8,11 @@ dependencies = [
     "pydantic-settings>=2.14.0",
     "pydantic[email]>=2.13.3",
     "python-dotenv>=1.0.0",
+    "voyageai>=0.3.7",
 ]
 
 [tool.setuptools]
-py-modules = ["api_config", "messaging"]
+py-modules = ["api_config", "messaging", "embeddings"]
 
 [tool.uv.workspace]
 members = [

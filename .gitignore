@@ -45,3 +45,18 @@ htmlcov/
 out/
 node_modules/
 .env.local
+
+# Tool caches
+.ruff_cache/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Env variants (keep examples)
+.env.*
+!.env.example
+!**/.env.example

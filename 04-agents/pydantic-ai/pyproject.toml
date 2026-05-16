@@ -1,0 +1,23 @@
+[project]
+name = "pydantic-ai-example"
+version = "0.1.0"
+description = "PydanticAI reminder agent — typed-tool counterpart to 04-agents/tool-calling/reminder.py"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic-ai-slim[anthropic]>=0.0.20",
+    "shared",
+]
+
+[tool.uv.sources]
+shared = { path = "../..", editable = true }
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.2.0",
+    "pytest>=8.3.0",
+    "ruff>=0.15.11",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
