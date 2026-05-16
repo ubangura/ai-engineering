@@ -1,12 +1,12 @@
 # VectorIndex implementation
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 
 class VectorIndex:
     def __init__(
         self,
-        distance_metric: str = "cosine",
+        distance_metric: Literal["cosine", "euclidean"] = "cosine",
         embedding_fn=None,
     ):
         self.vectors: List[List[float]] = []
@@ -32,7 +32,7 @@ class VectorIndex:
         vector = self._embedding_fn(content)
         self.add_vector(vector=vector, document=document)
 
-    def search(self, query: Any, k: int = 1) -> List[Tuple[Dict[str, Any], float]]:
+    def search(self, query: Any, top_k: int = 1) -> List[Tuple[Dict[str, Any], float]]:
         if not self.vectors:
             return []
 
@@ -55,8 +55,8 @@ class VectorIndex:
                 f"Query vector dimension mismatch. Expected {self._vector_dim}, got {len(query_vector)}"
             )
 
-        if k <= 0:
-            raise ValueError("k must be a positive integer.")
+        if top_k <= 0:
+            raise ValueError("top_k must be a positive integer.")
 
         if self._distance_metric == "cosine":
             dist_func = self._cosine_distance
@@ -70,7 +70,7 @@ class VectorIndex:
 
         distances.sort(key=lambda item: item[0])
 
-        return [(doc, dist) for dist, doc in distances[:k]]
+        return [(doc, dist) for dist, doc in distances[:top_k]]
 
     def add_vector(self, vector, document: Dict[str, Any]):
         if not isinstance(vector, list) or not all(

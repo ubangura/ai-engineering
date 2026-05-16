@@ -5,6 +5,7 @@ description = "Shared Anthropic API configuration"
 requires-python = ">=3.10"
 dependencies = [
     "anthropic>=0.96.0",
+    "ipykernel>=7.2.0",
     "pydantic-settings>=2.14.0",
     "pydantic[email]>=2.13.3",
     "python-dotenv>=1.0.0",
@@ -12,7 +13,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["api_config", "messaging", "embeddings"]
+py-modules = ["api_config", "messaging", "embedding", "chunking"]
 
 [tool.uv.workspace]
 members = [
