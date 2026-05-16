@@ -4,7 +4,7 @@ import voyageai
 from dotenv import load_dotenv
 
 load_dotenv()
-client = voyageai.Client()
+client = voyageai.Client()  # pyright: ignore[reportPrivateImportUsage]
 
 
 def generate_embedding(
