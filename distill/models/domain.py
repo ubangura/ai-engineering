@@ -61,6 +61,8 @@ class Outline(BaseModel):
 
 
 class VideoAnalysis(BaseModel):
+    """Structural outline for a videp plus content signals used to configure downstream agents."""
+
     outline: Outline
     inferred_category: Literal["stem", "humanities", "social", "other"] = Field(
         description="Content category inferred from the associated transcript"
